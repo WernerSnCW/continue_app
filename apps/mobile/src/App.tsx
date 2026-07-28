@@ -1,13 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { IgdbSearchResult } from '@continue/shared';
 import { FREE_TIER_GAME_LIMIT } from '@continue/shared';
+import { DevPanel } from './components/DevPanel';
 import { AddGameScreen } from './screens/AddGameScreen';
+import { ArchivePickerScreen } from './screens/ArchivePickerScreen';
 import { CounterScreen } from './screens/CounterScreen';
 import { HomeScreen } from './screens/HomeScreen';
-import { activeRun, load, newDeath, newGame, newRun, save, type AppState } from './lib/store';
+import { RankingScreen } from './screens/RankingScreen';
+import {
+  activeRun,
+  archivedGames,
+  emptyState,
+  load,
+  newDeath,
+  newGame,
+  newRun,
+  save,
+  usedSlots,
+  type AppState,
+} from './lib/store';
 import './App.css';
 
-type View = { name: 'home' } | { name: 'counter'; gameId: string } | { name: 'add' };
+type View =
+  | { name: 'home' }
+  | { name: 'counter'; gameId: string }
+  | { name: 'add' }
+  | { name: 'ranking' }
+  | { name: 'archive'; pending: IgdbSearchResult; cycle: number };
 
 export default function App() {
   const [state, setState] = useState<AppState>(load);
@@ -22,15 +41,29 @@ export default function App() {
     [state.games],
   );
 
-  const addGame = (result: IgdbSearchResult) => {
-    if (!state.entitlement.unlimitedGames && state.games.length >= FREE_TIER_GAME_LIMIT) return;
-
+  /** Creates the game + its opening run and jumps to the counter. */
+  const commitGame = (result: IgdbSearchResult, cycle: number, archiveId?: string) => {
+    // Built outside the updater: StrictMode double-invokes updaters, and
+    // crypto.randomUUID() there would mint ids that don't match the view.
     const game = newGame({ igdbId: result.id, name: result.name, coverUrl: result.coverUrl });
-    // Every game starts on a first playthrough, so the counter always has a
-    // run to attribute deaths to.
-    const run = newRun(game.id, 0);
-    setState((s) => ({ ...s, games: [...s.games, game], runs: [...s.runs, run] }));
+    const run = newRun(game.id, cycle);
+
+    setState((s) => ({
+      ...s,
+      games: [...s.games.map((g) => (g.id === archiveId ? { ...g, archived: true } : g)), game],
+      runs: [...s.runs, run],
+    }));
     setView({ name: 'counter', gameId: game.id });
+  };
+
+  const startTracking = (result: IgdbSearchResult, cycle: number) => {
+    // Free tier is full: make the user choose what to archive rather than
+    // silently refusing or deleting anything.
+    if (!state.entitlement.unlimitedGames && usedSlots(state) >= FREE_TIER_GAME_LIMIT) {
+      setView({ name: 'archive', pending: result, cycle });
+      return;
+    }
+    commitGame(result, cycle);
   };
 
   const recordDeath = (gameId: string) =>
@@ -64,33 +97,84 @@ export default function App() {
       };
     });
 
-  switch (view.name) {
-    case 'counter':
-      return (
-        <CounterScreen
-          state={state}
-          gameId={view.gameId}
-          onBack={() => setView({ name: 'home' })}
-          onDeath={() => recordDeath(view.gameId)}
-          onUndo={() => undoDeath(view.gameId)}
-          onAdvanceRun={() => advanceRun(view.gameId)}
-        />
-      );
-    case 'add':
-      return (
-        <AddGameScreen
-          onBack={() => setView({ name: 'home' })}
-          onPick={addGame}
-          existingIgdbIds={existingIgdbIds}
-        />
-      );
-    default:
-      return (
-        <HomeScreen
-          state={state}
-          onOpenGame={(gameId) => setView({ name: 'counter', gameId })}
-          onAddGame={() => setView({ name: 'add' })}
-        />
-      );
-  }
+  const logTime = (gameId: string, seconds: number) =>
+    setState((s) => {
+      const run = activeRun(s, gameId);
+      if (!run) return s;
+      return {
+        ...s,
+        runs: s.runs.map((r) =>
+          r.id === run.id ? { ...r, playedSeconds: r.playedSeconds + seconds } : r,
+        ),
+      };
+    });
+
+  const toggleUnlimited = () =>
+    setState((s) => ({
+      ...s,
+      entitlement: s.entitlement.unlimitedGames
+        ? { unlimitedGames: false, purchasedAt: null }
+        : { unlimitedGames: true, purchasedAt: new Date().toISOString() },
+    }));
+
+  const screen = () => {
+    switch (view.name) {
+      case 'counter':
+        return (
+          <CounterScreen
+            state={state}
+            gameId={view.gameId}
+            onBack={() => setView({ name: 'home' })}
+            onDeath={() => recordDeath(view.gameId)}
+            onUndo={() => undoDeath(view.gameId)}
+            onAdvanceRun={() => advanceRun(view.gameId)}
+            onLogTime={(seconds) => logTime(view.gameId, seconds)}
+          />
+        );
+      case 'add':
+        return (
+          <AddGameScreen
+            onBack={() => setView({ name: 'home' })}
+            onStart={startTracking}
+            existingIgdbIds={existingIgdbIds}
+            unlimited={state.entitlement.unlimitedGames}
+          />
+        );
+      case 'ranking':
+        return <RankingScreen state={state} onBack={() => setView({ name: 'home' })} />;
+      case 'archive':
+        return (
+          <ArchivePickerScreen
+            state={state}
+            pendingName={view.pending.name}
+            onArchive={(gameId) => commitGame(view.pending, view.cycle, gameId)}
+            onCancel={() => setView({ name: 'add' })}
+          />
+        );
+      default:
+        return (
+          <HomeScreen
+            state={state}
+            onOpenGame={(gameId) => setView({ name: 'counter', gameId })}
+            onAddGame={() => setView({ name: 'add' })}
+            onOpenRanking={() => setView({ name: 'ranking' })}
+          />
+        );
+    }
+  };
+
+  return (
+    <>
+      {screen()}
+      <DevPanel
+        unlimited={state.entitlement.unlimitedGames}
+        onToggleUnlimited={toggleUnlimited}
+        archivedCount={archivedGames(state).length}
+        onReset={() => {
+          setState(emptyState());
+          setView({ name: 'home' });
+        }}
+      />
+    </>
+  );
 }

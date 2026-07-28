@@ -1,12 +1,25 @@
+/* Self-hosted so the Android build doesn't depend on a network round trip for
+   fonts. Same families the prototype pulls from Google Fonts. */
+@import '@fontsource/cinzel/600.css';
+@import '@fontsource/cinzel/700.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
 :root {
-  --bg: #0b0b0d;
-  --surface: #151519;
-  --surface-2: #1e1e24;
-  --text: #e8e6e3;
-  --muted: #8a8892;
-  --blood: #8c1c13;
-  --blood-bright: #c1440e;
-  --edge: #2a2a32;
+  --bg: #0b0b0e;
+  --bg-soft: #131318;
+  --card: #17171d;
+  --card-2: #1e1e26;
+  --line: #2b2b34;
+  --ember: #ff5a36;
+  --ember-dim: #7a2c1a;
+  --toxic: #8ee36b;
+  --text: #ece9e2;
+  --text-dim: #9a988f;
+  --text-faint: #67655e;
+  --gold: #e8b64a;
 
   color-scheme: dark;
 }
@@ -17,9 +30,13 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: #050506;
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(255, 90, 54, 0.07), transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(142, 227, 107, 0.05), transparent 40%);
+  background-attachment: fixed;
+  font-family: 'Inter', system-ui, sans-serif;
   color: var(--text);
-  font-family: Georgia, 'Times New Roman', serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
 }
@@ -28,4 +45,7 @@ button {
   font: inherit;
   color: inherit;
   cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
 }

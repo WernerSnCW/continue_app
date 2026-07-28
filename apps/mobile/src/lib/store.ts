@@ -21,11 +21,21 @@ export const emptyState = (): AppState => ({
   entitlement: { unlimitedGames: false, purchasedAt: null },
 });
 
+/** Older saved states predate `archived` / `playedSeconds`; fill them in. */
+function migrate(raw: AppState): AppState {
+  return {
+    ...emptyState(),
+    ...raw,
+    games: (raw.games ?? []).map((g) => ({ ...g, archived: g.archived ?? false })),
+    runs: (raw.runs ?? []).map((r) => ({ ...r, playedSeconds: r.playedSeconds ?? 0 })),
+  };
+}
+
 export function load(): AppState {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return emptyState();
-    return { ...emptyState(), ...(JSON.parse(raw) as AppState) };
+    return migrate(JSON.parse(raw) as AppState);
   } catch {
     // Corrupt state shouldn't brick the app — start clean rather than crash.
     return emptyState();
@@ -50,6 +60,10 @@ export const runTypeForCycle = (cycle: number): RunType =>
 export const runLabel = (cycle: number): string =>
   cycle <= 0 ? 'NG' : cycle === 1 ? 'NG+' : cycle === 2 ? 'NG++' : `NG+${cycle}`;
 
+/** Longer form used on cards, matching the mockup's "First run" wording. */
+export const runLabelLong = (cycle: number): string =>
+  cycle <= 0 ? 'First run' : runLabel(cycle);
+
 export function newRun(gameId: string, cycle: number): Run {
   return {
     id: id(),
@@ -58,11 +72,12 @@ export function newRun(gameId: string, cycle: number): Run {
     cycle,
     startedAt: now(),
     completedAt: null,
+    playedSeconds: 0,
   };
 }
 
 export function newGame(input: Pick<Game, 'igdbId' | 'name' | 'coverUrl'>): Game {
-  return { id: id(), platform: null, addedAt: now(), ...input };
+  return { id: id(), platform: null, addedAt: now(), archived: false, ...input };
 }
 
 export function newDeath(gameId: string, runId: string): DeathEntry {
@@ -70,6 +85,19 @@ export function newDeath(gameId: string, runId: string): DeathEntry {
 }
 
 // --- selectors -------------------------------------------------------------
+
+export const activeGames = (s: AppState): Game[] => s.games.filter((g) => !g.archived);
+export const archivedGames = (s: AppState): Game[] => s.games.filter((g) => g.archived);
+
+/**
+ * Games shown on the home screen. Archived games come back only once the
+ * unlock is owned — that's the "restore archived history" promise.
+ */
+export const visibleGames = (s: AppState): Game[] =>
+  s.entitlement.unlimitedGames ? s.games : activeGames(s);
+
+/** Only unarchived games consume a free-tier slot. */
+export const usedSlots = (s: AppState): number => activeGames(s).length;
 
 export const runsForGame = (s: AppState, gameId: string): Run[] =>
   s.runs.filter((r) => r.gameId === gameId).sort((a, b) => a.cycle - b.cycle);
@@ -84,3 +112,14 @@ export const deathsForGame = (s: AppState, gameId: string): number =>
 
 export const deathsForRun = (s: AppState, runId: string): number =>
   s.deaths.reduce((n, d) => (d.runId === runId ? n + 1 : n), 0);
+
+export const deathsToday = (s: AppState, gameId: string): number => {
+  const today = new Date().toDateString();
+  return s.deaths.reduce(
+    (n, d) => (d.gameId === gameId && new Date(d.diedAt).toDateString() === today ? n + 1 : n),
+    0,
+  );
+};
+
+export const playedSecondsForGame = (s: AppState, gameId: string): number =>
+  runsForGame(s, gameId).reduce((n, r) => n + r.playedSeconds, 0);

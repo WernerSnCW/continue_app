@@ -1,17 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import type { IgdbSearchResult } from '@continue/shared';
+import { FREE_TIER_GAME_LIMIT } from '@continue/shared';
 import { searchGames } from '../lib/igdb';
+
+/** Suggestions from the prototype — genre-appropriate starting points. */
+const SUGGESTED = ['Dark Souls III', 'Bloodborne', 'Lies of P', 'Nine Sols', 'Lords of the Fallen'];
 
 interface Props {
   onBack: () => void;
-  onPick: (result: IgdbSearchResult) => void;
-  /** igdbIds already tracked, so the picker can mark them. */
+  onStart: (result: IgdbSearchResult, cycle: number) => void;
   existingIgdbIds: ReadonlySet<number>;
+  unlimited: boolean;
 }
 
-export function AddGameScreen({ onBack, onPick, existingIgdbIds }: Props) {
+export function AddGameScreen({ onBack, onStart, existingIgdbIds, unlimited }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<IgdbSearchResult[]>([]);
+  const [selected, setSelected] = useState<IgdbSearchResult | null>(null);
+  const [cycle, setCycle] = useState(0);
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,23 +55,50 @@ export function AddGameScreen({ onBack, onPick, existingIgdbIds }: Props) {
     };
   }, [query]);
 
+  const segments = [
+    { cycle: 0, label: 'First run', locked: false },
+    { cycle: 1, label: 'NG+', locked: false },
+    { cycle: 2, label: 'NG++', locked: !unlimited },
+  ];
+
   return (
     <div className="screen">
-      <header className="screen-head add-head">
-        <button className="btn-ghost" onClick={onBack} aria-label="Back">
+      <div className="counter-top">
+        <button className="nav-btn" onClick={onBack} aria-label="Back">
           ←
         </button>
-        <h1 className="title-sm">Add a game</h1>
-      </header>
+        <h3 className="scr-title" style={{ margin: 0 }}>
+          Track a new game
+        </h3>
+      </div>
 
+      <div className="field-label" style={{ marginTop: 16 }}>
+        Game name
+      </div>
       <input
         ref={inputRef}
         className="search-input"
         type="search"
         value={query}
-        placeholder="Search games…"
-        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Type or pick below..."
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setSelected(null);
+        }}
       />
+
+      {query.trim().length < 2 && (
+        <>
+          <div className="field-label">Suggested</div>
+          <div className="chip-row">
+            {SUGGESTED.map((name) => (
+              <button key={name} className="chip" onClick={() => setQuery(name)}>
+                {name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {status === 'loading' && <p className="hint">Searching…</p>}
       {status === 'error' && <p className="hint hint-error">{error}</p>}
@@ -73,27 +106,63 @@ export function AddGameScreen({ onBack, onPick, existingIgdbIds }: Props) {
         <p className="hint">No games found.</p>
       )}
 
-      <ul className="result-list">
-        {results.map((r) => {
-          const already = existingIgdbIds.has(r.id);
-          return (
-            <li key={r.id}>
-              <button className="result-row" onClick={() => onPick(r)} disabled={already}>
-                {r.coverUrl ? (
-                  <img className="cover cover-sm" src={r.coverUrl} alt="" loading="lazy" />
-                ) : (
-                  <div className="cover cover-sm cover-blank" aria-hidden="true" />
-                )}
-                <span className="result-meta">
-                  <span className="game-name">{r.name}</span>
-                  <span className="game-run">{r.firstReleaseYear ?? '—'}</span>
-                </span>
-                {already && <span className="already">tracked</span>}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      {results.length > 0 && (
+        <ul className="result-list">
+          {results.map((r) => {
+            const already = existingIgdbIds.has(r.id);
+            return (
+              <li key={r.id}>
+                <button
+                  className={`result-row${selected?.id === r.id ? ' selected' : ''}`}
+                  onClick={() => setSelected(r)}
+                  disabled={already}
+                >
+                  {r.coverUrl ? (
+                    <img className="cover" src={r.coverUrl} alt="" loading="lazy" />
+                  ) : (
+                    <span className="cover" />
+                  )}
+                  <span className="rmid">
+                    <span className="rname">{r.name}</span>
+                    <br />
+                    <span className="ryear">{r.firstReleaseYear ?? '—'}</span>
+                  </span>
+                  {already && <span className="already">tracked</span>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="spacer" />
+
+      <div className="field-label">This run</div>
+      <div className="segmented">
+        {segments.map((seg) => (
+          <button
+            key={seg.cycle}
+            className={`seg${cycle === seg.cycle ? ' active' : ''}`}
+            disabled={seg.locked}
+            onClick={() => setCycle(seg.cycle)}
+          >
+            {seg.label}
+            {seg.locked ? ' 🔒' : ''}
+          </button>
+        ))}
+      </div>
+
+      <button
+        className="primary-btn"
+        disabled={!selected}
+        onClick={() => selected && onStart(selected, cycle)}
+      >
+        {selected ? `Start tracking ${selected.name}` : 'Start tracking'}
+      </button>
+      <p className="ghost-note">
+        Free plan: {FREE_TIER_GAME_LIMIT} games at a time. Swap one out later and its history is
+        archived, not deleted.
+      </p>
     </div>
   );
 }

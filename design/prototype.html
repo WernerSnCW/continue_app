@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Continue? — Prototype Screens</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg: #0b0b0e;
+    --bg-soft: #131318;
+    --card: #17171d;
+    --card-2: #1e1e26;
+    --line: #2b2b34;
+    --ember: #ff5a36;
+    --ember-dim: #7a2c1a;
+    --toxic: #8ee36b;
+    --text: #ece9e2;
+    --text-dim: #9a988f;
+    --text-faint: #67655e;
+    --gold: #e8b64a;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    background: #050506;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,90,54,0.07), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(142,227,107,0.05), transparent 40%);
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text);
+    padding: 40px 24px 80px;
+  }
+
+  .page-header{
+    max-width: 1200px;
+    margin: 0 auto 40px;
+  }
+  .page-header h1{
+    font-family: 'Cinzel', serif;
+    font-size: 30px;
+    letter-spacing: 1px;
+    margin: 0 0 8px;
+    color: var(--text);
+  }
+  .page-header p{
+    color: var(--text-dim);
+    font-size: 14px;
+    margin: 0;
+    max-width: 640px;
+    line-height: 1.6;
+  }
+
+  .rail{
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 36px;
+    justify-content: center;
+  }
+
+  .unit{
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .unit .label{
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 600;
+  }
+
+  .phone{
+    width: 300px;
+    height: 620px;
+    background: linear-gradient(180deg, #1a1a20, #0f0f13);
+    border-radius: 34px;
+    border: 1px solid #2e2e38;
+    box-shadow: 0 0 0 6px #0a0a0c, 0 20px 50px rgba(0,0,0,0.6);
+    padding: 14px 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .phone .statusbar{
+    display:flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-faint);
+    padding: 2px 8px 10px;
+  }
+  .screen{
+    height: calc(100% - 46px);
+    display:flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .death-flash{
+    position:absolute; inset:0; z-index:5; border-radius: 20px;
+    display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(circle, rgba(255,42,42,0.32), rgba(8,0,0,0.8) 72%);
+    opacity:0; pointer-events:none;
+  }
+  .death-flash.show{ animation: deathFlash 0.9s ease-out; }
+  @keyframes deathFlash{
+    0%{ opacity:0; } 10%{ opacity:1; } 70%{ opacity:1; } 100%{ opacity:0; }
+  }
+  .death-flash .txt{
+    font-family:'Cinzel',serif; color:#ff4d4d; font-size:24px; letter-spacing:2px;
+    text-shadow: 0 0 24px rgba(255,50,50,0.9); transform: scale(0.7); text-align:center;
+  }
+  .death-flash.show .txt{ animation: deathText 0.9s ease-out; }
+  @keyframes deathText{
+    0%{ transform: scale(0.6); opacity:0; }
+    15%{ transform: scale(1.08); opacity:1; }
+    25%{ transform: scale(1); }
+    75%{ opacity:1; }
+    100%{ opacity:0; transform: scale(1.02); }
+  }
+  .navpill{
+    margin-top: auto;
+    width: 120px;
+    height: 4px;
+    border-radius: 4px;
+    background: #3a3a44;
+    align-self:center;
+  }
+
+  /* icons - simple original shapes, not tied to any specific game */
+  .icon{ display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .icon-flame{
+    width: 22px; height: 26px;
+    background: linear-gradient(180deg, var(--gold), var(--ember));
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    clip-path: polygon(50% 0%, 80% 35%, 78% 70%, 50% 100%, 22% 70%, 20% 35%);
+  }
+  .icon-skull{ width: 22px; height: 22px; position:relative; }
+  .icon-skull::before{
+    content:''; position:absolute; inset:0;
+    background: var(--text-dim);
+    border-radius: 50% 50% 45% 45%;
+  }
+  .icon-skull::after{
+    content:''; position:absolute; left:50%; bottom:-3px; transform:translateX(-50%);
+    width: 10px; height: 6px; background: var(--text-dim); border-radius: 0 0 3px 3px;
+  }
+  .icon-skull .eye{ position:absolute; width:4px; height:5px; background:#0b0b0e; border-radius:50%; top:8px; }
+  .icon-skull .eye.l{ left:5px; } .icon-skull .eye.r{ right:5px; }
+
+  .icon-swords{ width: 24px; height: 24px; position:relative; }
+  .icon-swords .blade{ position:absolute; width:3px; height:22px; top:1px; left:10.5px; border-radius:2px; }
+  .icon-swords .blade.a{ background: linear-gradient(180deg,#cfcfd6,#7d7d88); transform: rotate(40deg); }
+  .icon-swords .blade.b{ background: linear-gradient(180deg,#cfcfd6,#7d7d88); transform: rotate(-40deg); }
+
+  .icon-crown{ width:24px; height:18px; position:relative; }
+  .icon-crown::before{
+    content:''; position:absolute; inset:6px 0 0 0;
+    background: var(--gold); clip-path: polygon(0% 100%, 0% 40%, 20% 65%, 50% 20%, 80% 65%, 100% 40%, 100% 100%);
+  }
+
+  /* Screen 1: Home / game list */
+  .brand-row{ display:flex; align-items:center; gap:10px; margin-bottom: 18px; }
+  .brand-row h2{ font-family:'Cinzel',serif; font-size:19px; margin:0; letter-spacing:0.5px; }
+  .brand-row .tag{ font-size:10px; color:var(--text-faint); margin-top:1px; }
+
+  .game-card{
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .game-card .name{ font-size:14px; font-weight:600; margin:0 0 4px; }
+  .game-card .run{ font-size:11px; color: var(--text-faint); }
+  .game-card .tally{ font-family:'Cinzel',serif; font-size:26px; color: var(--ember); }
+
+  .add-slot{
+    border: 1.5px dashed var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    text-align:center;
+    color: var(--text-faint);
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  .locked-slot{
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display:flex; align-items:center; justify-content:space-between;
+    opacity: 0.55;
+    margin-bottom: 14px;
+  }
+  .locked-slot .name{ font-size:13px; }
+
+  .upsell-bar{
+    margin-top:auto;
+    background: linear-gradient(90deg, var(--ember-dim), #2a1710);
+    border: 1px solid var(--ember);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .upsell-bar .t1{ font-size:12px; font-weight:600; color:var(--gold); margin:0 0 2px; }
+  .upsell-bar .t2{ font-size:11px; color:var(--text-dim); margin:0; }
+
+  /* Screen 2: counter */
+  .run-chip{
+    display:inline-flex; align-self:flex-start; gap:6px; align-items:center;
+    background: var(--card-2); border:1px solid var(--line); border-radius: 20px;
+    padding: 5px 12px; font-size:11px; color:var(--text-dim); margin-bottom: 18px;
+  }
+  .counter-mid{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .counter-mid .game-title{ font-size:13px; color:var(--text-dim); margin-bottom:4px; }
+  .counter-mid .huge{
+    font-family:'Cinzel',serif; font-size:76px; line-height:1; color: var(--text);
+    text-shadow: 0 0 40px rgba(255,90,54,0.35);
+  }
+  .counter-mid .huge-label{ font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--ember); margin-top:6px; }
+
+  .tap-btn{
+    width: 132px; height:132px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #ff8a5c, var(--ember) 60%, #8a2c14 100%);
+    border: 3px solid #ffcbb3;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    margin: 26px auto 18px;
+    box-shadow: 0 0 0 8px rgba(255,90,54,0.08), 0 10px 30px rgba(255,90,54,0.25);
+    cursor:pointer; user-select:none;
+  }
+  .tap-btn span{ font-size:12px; font-weight:700; letter-spacing:1px; color:#2a0c02; }
+
+  .timer-row{ display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 12px; margin-bottom:16px; }
+  .timer-btn{ width:26px; height:26px; border-radius:50%; background:var(--card-2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+  .timer-btn .play{ width:0; height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; border-left:9px solid var(--toxic); margin-left:2px; }
+  .timer-btn .pause{ display:flex; gap:3px; }
+  .timer-btn .pause span{ width:3px; height:11px; background:var(--toxic); display:block; }
+  .timer-time{ font-size:12px; color:var(--text-dim); }
+
+  .stat-row{ display:flex; gap:10px; justify-content:center; margin-bottom:16px; }
+  .stat-pill{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 12px; text-align:center; }
+  .stat-pill .n{ font-size:15px; font-weight:700; }
+  .stat-pill .l{ font-size:10px; color:var(--text-faint); }
+
+  .avg-card{
+    background: var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-top:auto; margin-bottom:14px;
+  }
+  .avg-card .h{ font-size:11px; color:var(--text-dim); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .avg-bars{ display:flex; align-items:flex-end; gap:14px; height:44px; }
+  .avg-bar{ width:34px; border-radius:5px 5px 0 0; position:relative; }
+  .avg-bar.you{ background: var(--ember); height:100%; }
+  .avg-bar.world{ background: var(--toxic); height:58%; align-self:flex-end; }
+  .avg-bars .col{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .avg-bars .col span{ font-size:9px; color:var(--text-faint); }
+
+  /* Screen 3: add game */
+  h3.scr-title{ font-family:'Cinzel',serif; font-size:17px; margin: 4px 0 16px; }
+  .field-label{ font-size:11px; color:var(--text-faint); margin-bottom:6px; text-transform:uppercase; letter-spacing:1px; }
+  .fake-input{
+    background: var(--card); border:1px solid var(--line); border-radius:10px;
+    padding: 12px 14px; font-size:13px; color: var(--text-dim); margin-bottom:18px;
+  }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom: 20px; }
+  .chip{ background: var(--card-2); border:1px solid var(--line); border-radius:16px; padding:6px 12px; font-size:11px; color:var(--text-dim); }
+
+  .segmented{ display:flex; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:22px; }
+  .segmented .seg{ flex:1; text-align:center; padding:10px 0; font-size:11px; color:var(--text-faint); position:relative; }
+  .segmented .seg.active{ background: var(--card-2); color: var(--text); }
+  .segmented .seg.lock::after{ content:'\1F512'; display:none; }
+
+  .primary-btn{
+    background: linear-gradient(180deg, #ff7a52, var(--ember));
+    color:#2a0c02; text-align:center; border-radius:12px; padding:13px; font-size:13px; font-weight:700;
+    margin-top:auto; letter-spacing:0.3px;
+  }
+  .ghost-note{ font-size:10.5px; color:var(--text-faint); text-align:center; margin-top:10px; line-height:1.5; }
+
+  /* Screen 4: paywall */
+  .paywall-head{ text-align:center; margin: 6px 0 20px; }
+  .paywall-head h3{ font-family:'Cinzel',serif; font-size:20px; margin: 10px 0 4px; }
+  .paywall-head p{ font-size:11.5px; color:var(--text-dim); margin:0; }
+  .crown-wrap{ display:flex; justify-content:center; margin-bottom:6px; }
+
+  .feature-row{ display:flex; align-items:flex-start; gap:10px; margin-bottom:14px; }
+  .feature-row .dot{ width:18px; height:18px; border-radius:50%; background: rgba(142,227,107,0.15); border:1px solid var(--toxic); flex-shrink:0; margin-top:1px; position:relative; }
+  .feature-row .dot::after{ content:''; position:absolute; left:5px; top:3px; width:6px; height:9px; border-right:2px solid var(--toxic); border-bottom:2px solid var(--toxic); transform:rotate(40deg); }
+  .feature-row .t{ font-size:12.5px; color: var(--text); margin:0 0 2px; font-weight:600; }
+  .feature-row .s{ font-size:10.5px; color:var(--text-faint); margin:0; line-height:1.4; }
+
+  .price-box{
+    background: linear-gradient(160deg, var(--card-2), var(--card));
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 14px;
+    text-align:center;
+    margin: 10px 0 16px;
+  }
+  .price-box .p{ font-family:'Cinzel',serif; font-size:28px; color:var(--gold); }
+  .price-box .s{ font-size:10.5px; color:var(--text-dim); }
+
+  /* Screen 5: personal difficulty ranking */
+  .icon-bars{ display:flex; align-items:flex-end; gap:2px; width:22px; height:22px; }
+  .icon-bars span{ width:5px; background: var(--ember); border-radius:2px 2px 0 0; display:block; }
+  .icon-bars span:nth-child(1){ height:8px; }
+  .icon-bars span:nth-child(2){ height:16px; }
+  .icon-bars span:nth-child(3){ height:22px; }
+
+  .diff-summary{ display:flex; gap:10px; margin-bottom:18px; }
+  .diff-card{ flex:1; border-radius:12px; padding:10px 12px; border:1px solid var(--line); }
+  .diff-card.hardest{ background: linear-gradient(160deg, var(--ember-dim), var(--card)); border-color: var(--ember); }
+  .diff-card.easiest{ background: linear-gradient(160deg, #1c2e18, var(--card)); border-color: var(--toxic); }
+  .dc-label{ font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+  .dc-game{ font-size:12.5px; font-weight:600; margin-bottom:4px; }
+  .dc-score{ font-family:'Cinzel',serif; font-size:20px; }
+  .dc-score span{ font-size:11px; color:var(--text-faint); font-family:'Inter',sans-serif; }
+
+  .diff-row{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .diff-rank{ font-family:'Cinzel',serif; font-size:15px; color:var(--text-faint); width:16px; text-align:center; flex-shrink:0; }
+  .diff-mid{ flex:1; min-width:0; }
+  .diff-name{ font-size:12.5px; font-weight:600; margin-bottom:6px; }
+  .diff-sub{ font-size:10px; color:var(--text-faint); font-weight:400; margin-left:6px; }
+  .diff-bar-track{ height:6px; border-radius:4px; background:var(--card-2); overflow:hidden; }
+  .diff-bar-fill{ height:100%; background: linear-gradient(90deg, var(--gold), var(--ember)); border-radius:4px; }
+  .diff-side{ text-align:right; flex-shrink:0; }
+  .diff-score-pill{ font-size:12px; font-weight:700; border-radius:8px; padding:2px 8px; display:inline-block; margin-bottom:2px; }
+  .diff-score-pill.high{ background: rgba(255,90,54,0.18); color:#ff8a5c; }
+  .diff-score-pill.mid{ background: rgba(232,182,74,0.18); color:var(--gold); }
+  .diff-score-pill.low{ background: rgba(142,227,107,0.15); color:var(--toxic); }
+  .diff-rate{ font-size:9.5px; color:var(--text-faint); }
+
+  .diff-locked-row{ display:flex; justify-content:space-between; align-items:center; padding:10px 0 2px; opacity:0.5; border-top:1px dashed var(--line); margin-top:2px; }
+  .diff-name-locked{ font-size:12px; }
+  .diff-locked-note{ font-size:10px; color:var(--text-faint); }
+</style>
+</head>
+<body>
+
+  <div class="page-header">
+    <h1>Continue? — prototype screens</h1>
+    <p>Dark, gaming-inspired UI. Reference only — this is the visual/interaction spec for the real app, not code to import.</p>
+  </div>
+
+  <div class="rail">
+
+    <div class="unit">
+      <div class="label">Home — your games</div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>battery</span></div>
+        <div class="screen">
+          <div class="brand-row">
+            <div class="icon icon-flame"></div>
+            <div>
+              <h2>Continue?</h2>
+              <div class="tag">your tally. your bragging rights.</div>
+            </div>
+          </div>
+
+          <div class="game-card">
+            <div>
+              <p class="name">Elden Ring</p>
+              <div class="run">NG+2 &middot; 41h played</div>
+            </div>
+            <div class="tally">312</div>
+          </div>
+
+          <div class="game-card">
+            <div>
+              <p class="name">Sekiro</p>
+              <div class="run">First run</div>
+            </div>
+            <div class="tally">87</div>
+          </div>
+
+          <div class="game-card">
+            <div>
+              <p class="name">Hollow Knight</p>
+              <div class="run">First run</div>
+            </div>
+            <div class="tally">54</div>
+          </div>
+
+          <div class="locked-slot">
+            <div class="name">4th slot &mdash; locked</div>
+            <div class="icon" style="font-size:14px; color:var(--text-faint);">&#128274;</div>
+          </div>
+
+          <div class="upsell-bar">
+            <p class="t1">Free plan: 3 games</p>
+            <p class="t2">Unlock unlimited games + global average — $1.99 one-time</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="unit">
+      <div class="label">Counter — the core loop</div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>battery</span></div>
+        <div class="screen">
+          <div class="death-flash" id="deathFlash"><div class="txt" id="deathFlashTxt">FALLEN &mdash; #313</div></div>
+          <div class="run-chip"><span class="icon icon-swords"><span class="blade a"></span><span class="blade b"></span></span> Elden Ring &middot; NG+2</div>
+
+          <div class="timer-row">
+            <div class="timer-btn" id="timerBtn" onclick="toggleTimer()"><span class="play"></span></div>
+            <div class="timer-time" id="timerTime">Session: 00:00:00</div>
+          </div>
+
+          <div class="counter-mid">
+            <div class="game-title">deaths this run</div>
+            <div class="huge" id="tally">312</div>
+            <div class="huge-label">tap on death</div>
+
+            <div class="tap-btn" onclick="var t=document.getElementById('tally'); var n=parseInt(t.textContent)+1; t.textContent=n; var f=document.getElementById('deathFlash'); document.getElementById('deathFlashTxt').textContent='FALLEN — #'+n; f.classList.remove('show'); void f.offsetWidth; f.classList.add('show');">
+              <div class="icon icon-skull"><span class="eye l"></span><span class="eye r"></span></div>
+              <span style="margin-top:6px;">+1 DEATH</span>
+            </div>
+
+            <div class="stat-row">
+              <div class="stat-pill"><div class="n">6</div><div class="l">today</div></div>
+              <div class="stat-pill"><div class="n">312</div><div class="l">this run</div></div>
+              <div class="stat-pill"><div class="n">453</div><div class="l">all-time</div></div>
+            </div>
+          </div>
+
+          <div class="avg-card">
+            <div class="h"><span class="icon icon-crown"></span> vs. everyone tracking Elden Ring</div>
+            <div class="avg-bars">
+              <div class="col"><div class="avg-bar you"></div><span>you: 312</span></div>
+              <div class="col"><div class="avg-bar world"></div><span>avg: 181</span></div>
+            </div>
+          </div>
+          <div class="navpill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="unit">
+      <div class="label">Add a game</div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>battery</span></div>
+        <div class="screen">
+          <h3 class="scr-title">Track a new game</h3>
+
+          <div class="field-label">Game name</div>
+          <div class="fake-input">Type or pick below...</div>
+
+          <div class="field-label">Suggested</div>
+          <div class="chip-row">
+            <div class="chip">Dark Souls III</div>
+            <div class="chip">Bloodborne</div>
+            <div class="chip">Lies of P</div>
+            <div class="chip">Nine Sols</div>
+            <div class="chip">Lords of the Fallen</div>
+          </div>
+
+          <div class="field-label">This run</div>
+          <div class="segmented">
+            <div class="seg active">First run</div>
+            <div class="seg">NG+</div>
+            <div class="seg">NG++ &#128274;</div>
+          </div>
+
+          <div class="primary-btn">Start tracking</div>
+          <p class="ghost-note">Free plan: 3 games at a time. Swap one out later and its history is archived, not deleted.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="unit">
+      <div class="label">Unlock — paywall</div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>battery</span></div>
+        <div class="screen">
+          <div class="paywall-head">
+            <div class="crown-wrap"><div class="icon icon-crown" style="width:34px;height:26px;"></div></div>
+            <h3>Unlock everything</h3>
+            <p>One tap. No subscription. Yours for good.</p>
+          </div>
+
+          <div class="feature-row"><div class="dot"></div><div><p class="t">Unlimited games</p><p class="s">Track as many as you're playing, not just 3.</p></div></div>
+          <div class="feature-row"><div class="dot"></div><div><p class="t">Restore archived history</p><p class="s">Every game you ever swapped out, back instantly.</p></div></div>
+          <div class="feature-row"><div class="dot"></div><div><p class="t">NG+ / NG++ run tracking</p><p class="s">Keep each playthrough's tally separate.</p></div></div>
+          <div class="feature-row"><div class="dot"></div><div><p class="t">Global average</p><p class="s">See how your death count compares to everyone else.</p></div></div>
+
+          <div class="price-box">
+            <div class="p">$1.99</div>
+            <div class="s">one-time &middot; not a subscription</div>
+          </div>
+
+          <div class="primary-btn">Unlock now</div>
+          <p class="ghost-note">Your 3 free games and their history stay exactly as they are.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="unit">
+      <div class="label">Your difficulty ranking</div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>battery</span></div>
+        <div class="screen">
+          <div class="brand-row">
+            <div class="icon icon-bars"><span></span><span></span><span></span></div>
+            <div>
+              <h2 style="font-size:17px;">Difficulty ranking</h2>
+              <div class="tag">based on your deaths per hour</div>
+            </div>
+          </div>
+
+          <div class="diff-summary">
+            <div class="diff-card hardest">
+              <div class="dc-label">Hardest for you</div>
+              <div class="dc-game">Elden Ring</div>
+              <div class="dc-score">9.2<span>/10</span></div>
+            </div>
+            <div class="diff-card easiest">
+              <div class="dc-label">Easiest for you</div>
+              <div class="dc-game">Hollow Knight</div>
+              <div class="dc-score">3.1<span>/10</span></div>
+            </div>
+          </div>
+
+          <div class="diff-row">
+            <div class="diff-rank">1</div>
+            <div class="diff-mid">
+              <div class="diff-name">Elden Ring <span class="diff-sub">NG+2 &middot; 41h logged</span></div>
+              <div class="diff-bar-track"><div class="diff-bar-fill" style="width:92%;"></div></div>
+            </div>
+            <div class="diff-side"><div class="diff-score-pill high">9.2</div><div class="diff-rate">7.6/hr</div></div>
+          </div>
+
+          <div class="diff-row">
+            <div class="diff-rank">2</div>
+            <div class="diff-mid">
+              <div class="diff-name">Sekiro <span class="diff-sub">First run &middot; 18h logged</span></div>
+              <div class="diff-bar-track"><div class="diff-bar-fill" style="width:64%;"></div></div>
+            </div>
+            <div class="diff-side"><div class="diff-score-pill mid">6.4</div><div class="diff-rate">4.8/hr</div></div>
+          </div>
+
+          <div class="diff-row">
+            <div class="diff-rank">3</div>
+            <div class="diff-mid">
+              <div class="diff-name">Hollow Knight <span class="diff-sub">First run &middot; 22h logged</span></div>
+              <div class="diff-bar-track"><div class="diff-bar-fill" style="width:31%;"></div></div>
+            </div>
+            <div class="diff-side"><div class="diff-score-pill low">3.1</div><div class="diff-rate">2.5/hr</div></div>
+          </div>
+
+          <div class="diff-locked-row">
+            <div class="diff-name-locked">Dark Souls III</div>
+            <div class="diff-locked-note">log session time to rank this one</div>
+          </div>
+
+          <p class="ghost-note" style="margin-top:auto;">Ranked against your own games only &mdash; scores shift as you log more sessions.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  var timerInterval = null;
+  var timerSeconds = 0;
+  function pad(n){ return n.toString().padStart(2,'0'); }
+  function updateTimerDisplay(){
+    var h = Math.floor(timerSeconds/3600);
+    var m = Math.floor((timerSeconds%3600)/60);
+    var s = timerSeconds%60;
+    document.getElementById('timerTime').textContent = 'Session: '+pad(h)+':'+pad(m)+':'+pad(s);
+  }
+  function toggleTimer(){
+    var btn = document.getElementById('timerBtn');
+    if(timerInterval){
+      clearInterval(timerInterval);
+      timerInterval = null;
+      btn.innerHTML = '<span class="play"></span>';
+    } else {
+      timerInterval = setInterval(function(){ timerSeconds++; updateTimerDisplay(); }, 1000);
+      btn.innerHTML = '<span class="pause"><span></span><span></span></span>';
+    }
+  }
+</script>
+
+</body>
+</html>

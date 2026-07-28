@@ -23,6 +23,12 @@ export interface Game {
   /** Free-text platform label, e.g. "PS5". Null when the user didn't specify. */
   platform: string | null;
   addedAt: IsoTimestamp;
+  /**
+   * Archived games stop counting toward the free-tier slot limit and drop off
+   * the home screen, but their Runs and DeathEntrys are kept. Archiving is
+   * never a delete — restoring is a paid feature.
+   */
+  archived: boolean;
 }
 
 export interface Run {
@@ -37,6 +43,13 @@ export interface Run {
   startedAt: IsoTimestamp;
   /** Null while the run is still in progress. */
   completedAt: IsoTimestamp | null;
+  /**
+   * Accumulated play time in seconds, from the counter screen's session timer.
+   * Only time the user actually clocked in counts — the difficulty ranking
+   * needs deaths-per-hour, so a run with 0 here is unrankable rather than
+   * infinitely hard.
+   */
+  playedSeconds: number;
 }
 
 export interface DeathEntry {
