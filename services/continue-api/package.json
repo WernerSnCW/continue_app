@@ -1,0 +1,13 @@
+{
+  "name": "@continue/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Supabase Edge Functions for Continue? — IGDB token exchange and global-average sync.",
+  "scripts": {
+    "start": "supabase start",
+    "stop": "supabase stop",
+    "serve": "supabase functions serve",
+    "deploy": "supabase functions deploy"
+  }
+}
