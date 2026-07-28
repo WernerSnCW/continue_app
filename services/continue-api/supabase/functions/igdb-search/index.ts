@@ -8,7 +8,13 @@
  * resolve to the game they're an edition of, so death tallies and the global
  * average key off one id per game. The token never leaves the function.
  */
-import { igdbQuery, IgdbError, jsonResponse, serviceClient } from '../_shared/igdb.ts';
+import {
+  handlePreflight,
+  igdbQuery,
+  IgdbError,
+  jsonResponse,
+  serviceClient,
+} from '../_shared/igdb.ts';
 import {
   buildByIdQuery,
   buildSearchQuery,
@@ -18,6 +24,9 @@ import {
 } from '../_shared/collapse.ts';
 
 Deno.serve(async (req) => {
+  const preflight = handlePreflight(req);
+  if (preflight) return preflight;
+
   try {
     const { q, limit } = await req.json().catch(() => ({}));
 

@@ -101,6 +101,17 @@ Verify the collapse rule against live IGDB:
 node scripts/check-igdb-search.mjs
 ```
 
+Verify the deployed functions end-to-end (cache populates, second call reuses
+the token, collapse still correct):
+
+```bash
+node scripts/check-deployed.mjs
+```
+
+The app reads the function URL from `apps/mobile/.env` — copy
+`apps/mobile/.env.example` and fill in `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_ANON_KEY`.
+
 ## Branches
 
 `dev` is the working branch. Don't commit directly to `main`.

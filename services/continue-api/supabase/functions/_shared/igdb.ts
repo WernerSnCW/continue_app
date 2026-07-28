@@ -112,8 +112,26 @@ export async function igdbQuery<T = unknown>(
   return (await res.json()) as T[];
 }
 
+/**
+ * Browsers preflight these calls, and Capacitor serves the app from a
+ * non-https origin (capacitor://localhost on Android), so a fixed allowlist
+ * would be brittle. Wide-open origin is acceptable here because both
+ * functions still require a valid Supabase JWT — the anon key is public by
+ * design, and the IGDB token never leaves the server.
+ */
+export const corsHeaders: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
+};
+
+/** Returns a preflight response for OPTIONS, or null to continue handling. */
+export const handlePreflight = (req: Request): Response | null =>
+  req.method === 'OPTIONS' ? new Response(null, { status: 204, headers: corsHeaders }) : null;
+
 export const jsonResponse = (payload: unknown, status = 200) =>
   new Response(JSON.stringify(payload), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });

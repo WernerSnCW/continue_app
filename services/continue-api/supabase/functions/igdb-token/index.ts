@@ -12,9 +12,18 @@
  * caller holding it can spend our IGDB rate limit. Prefer calling igdb-search,
  * which uses the token server-side and never exposes it.
  */
-import { getIgdbToken, IgdbError, jsonResponse, serviceClient } from '../_shared/igdb.ts';
+import {
+  getIgdbToken,
+  handlePreflight,
+  IgdbError,
+  jsonResponse,
+  serviceClient,
+} from '../_shared/igdb.ts';
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  const preflight = handlePreflight(req);
+  if (preflight) return preflight;
+
   try {
     const client = serviceClient();
     const accessToken = await getIgdbToken(client);
