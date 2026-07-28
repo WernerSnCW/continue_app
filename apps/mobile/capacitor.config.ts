@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.cloudworkz.continueapp',
+  appId: 'io.quietfoundry.continueapp',
   appName: 'Continue?',
   // Vite's build output. `cap sync` copies this into the native project.
   webDir: 'dist',
