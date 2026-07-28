@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { SkullIcon, SwordsIcon } from '../components/icons';
+import { BarsIcon, SkullIcon, SwordsIcon } from '../components/icons';
+import { playAdvance, playClick, playDeath } from '../lib/sound';
 import {
   activeRun,
   deathsForGame,
@@ -18,6 +19,7 @@ interface Props {
   onAdvanceRun: () => void;
   /** Commits accumulated session seconds to the active run. */
   onLogTime: (seconds: number) => void;
+  onOpenStats: () => void;
 }
 
 function formatClock(totalSeconds: number): string {
@@ -34,6 +36,7 @@ export function CounterScreen({
   onUndo,
   onAdvanceRun,
   onLogTime,
+  onOpenStats,
 }: Props) {
   const game = state.games.find((g) => g.id === gameId);
   const run = activeRun(state, gameId);
@@ -67,6 +70,7 @@ export function CounterScreen({
   useEffect(() => commit, [commit]);
 
   const toggleTimer = () => {
+    playClick();
     if (running) {
       commit();
       setRunning(false);
@@ -77,6 +81,7 @@ export function CounterScreen({
   };
 
   const handleBack = () => {
+    playClick();
     commit();
     setRunning(false);
     onBack();
@@ -89,6 +94,7 @@ export function CounterScreen({
   const handleDeath = () => {
     onDeath();
     setFlash({ key: Date.now(), n: runDeaths + 1 });
+    playDeath();
     navigator.vibrate?.(180);
   };
 
@@ -109,6 +115,19 @@ export function CounterScreen({
         <span className="run-chip" style={{ marginBottom: 0 }}>
           <SwordsIcon /> {game.name} · {runLabel(run.cycle)}
         </span>
+        <button
+          className="nav-btn"
+          onClick={() => {
+            playClick();
+            commit();
+            setRunning(false);
+            onOpenStats();
+          }}
+          aria-label="Game stats"
+          style={{ marginLeft: 'auto' }}
+        >
+          <BarsIcon />
+        </button>
       </div>
 
       <div className="timer-row">
@@ -159,10 +178,23 @@ export function CounterScreen({
       </div>
 
       <div className="counter-actions">
-        <button className="text-btn" onClick={onUndo} disabled={runDeaths === 0}>
+        <button
+          className="text-btn"
+          onClick={() => {
+            playClick();
+            onUndo();
+          }}
+          disabled={runDeaths === 0}
+        >
           Undo last
         </button>
-        <button className="text-btn" onClick={onAdvanceRun}>
+        <button
+          className="text-btn"
+          onClick={() => {
+            playAdvance();
+            onAdvanceRun();
+          }}
+        >
           Finish run → {runLabel(run.cycle + 1)}
         </button>
       </div>

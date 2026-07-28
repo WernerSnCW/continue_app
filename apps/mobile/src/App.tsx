@@ -5,6 +5,7 @@ import { DevPanel } from './components/DevPanel';
 import { AddGameScreen } from './screens/AddGameScreen';
 import { ArchivePickerScreen } from './screens/ArchivePickerScreen';
 import { CounterScreen } from './screens/CounterScreen';
+import { GameStatsScreen } from './screens/GameStatsScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { RankingScreen } from './screens/RankingScreen';
 import {
@@ -26,6 +27,7 @@ type View =
   | { name: 'counter'; gameId: string }
   | { name: 'add' }
   | { name: 'ranking' }
+  | { name: 'stats'; gameId: string }
   | { name: 'archive'; pending: IgdbSearchResult; cycle: number };
 
 export default function App() {
@@ -129,6 +131,15 @@ export default function App() {
             onUndo={() => undoDeath(view.gameId)}
             onAdvanceRun={() => advanceRun(view.gameId)}
             onLogTime={(seconds) => logTime(view.gameId, seconds)}
+            onOpenStats={() => setView({ name: 'stats', gameId: view.gameId })}
+          />
+        );
+      case 'stats':
+        return (
+          <GameStatsScreen
+            state={state}
+            gameId={view.gameId}
+            onBack={() => setView({ name: 'counter', gameId: view.gameId })}
           />
         );
       case 'add':

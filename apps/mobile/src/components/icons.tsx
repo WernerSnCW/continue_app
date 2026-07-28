@@ -4,8 +4,6 @@
  * any particular game.
  */
 
-export const FlameIcon = () => <span className="icon icon-flame" aria-hidden="true" />;
-
 export const SkullIcon = () => (
   <span className="icon icon-skull" aria-hidden="true">
     <span className="eye l" />

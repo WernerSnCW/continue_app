@@ -45,6 +45,11 @@ export function ArchivePickerScreen({ state, pendingName, onArchive, onCancel }:
         const run = activeRun(state, game.id);
         return (
           <button key={game.id} className="game-card" onClick={() => onArchive(game.id)}>
+            {game.coverUrl ? (
+              <img className="card-cover" src={game.coverUrl} alt="" loading="lazy" />
+            ) : (
+              <span className="card-cover card-cover-blank" aria-hidden="true" />
+            )}
             <span className="card-left">
               <p className="name">{game.name}</p>
               <span className="run">

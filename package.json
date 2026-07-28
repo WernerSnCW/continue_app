@@ -9,5 +9,8 @@
     "dev": "pnpm --filter @continue/mobile dev",
     "build": "pnpm --filter @continue/mobile build",
     "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.3"
   }
 }

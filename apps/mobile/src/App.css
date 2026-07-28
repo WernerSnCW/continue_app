@@ -20,14 +20,6 @@
   flex-shrink: 0;
 }
 
-.icon-flame {
-  width: 22px;
-  height: 26px;
-  background: linear-gradient(180deg, var(--gold), var(--ember));
-  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-  clip-path: polygon(50% 0%, 80% 35%, 78% 70%, 50% 100%, 22% 70%, 20% 35%);
-}
-
 .icon-skull {
   width: 22px;
   height: 22px;
@@ -213,7 +205,21 @@
 }
 .game-card.is-archived { opacity: 0.6; }
 
-.card-left { min-width: 0; }
+.card-left { min-width: 0; flex: 1; }
+
+.card-cover {
+  width: 34px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 5px;
+  flex-shrink: 0;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+}
+.card-cover-blank {
+  display: block;
+  border-style: dashed;
+}
 
 .add-slot {
   width: 100%;
@@ -627,6 +633,93 @@
 }
 .diff-name-locked { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .diff-locked-note { font-size: 10px; color: var(--text-faint); flex-shrink: 0; }
+
+/* --- per-game stats -------------------------------------------------------- */
+
+.stats-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 18px;
+}
+.stats-cover {
+  width: 54px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+}
+.stats-cover-blank { display: block; border-style: dashed; }
+.stats-head-meta { min-width: 0; }
+.stats-name {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.tile {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 6px;
+  text-align: center;
+}
+.tile-n {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ember);
+  line-height: 1.1;
+}
+.tile-l { font-size: 9.5px; color: var(--text-faint); margin-top: 3px; }
+
+.run-row {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 13px;
+  margin-bottom: 10px;
+}
+.run-row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.run-row-name { font-size: 12.5px; font-weight: 600; letter-spacing: 0.5px; }
+.run-badge {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--toxic);
+  border: 1px solid var(--toxic);
+  border-radius: 6px;
+  padding: 1px 5px;
+  margin-left: 8px;
+}
+.run-row-deaths {
+  font-family: 'Cinzel', serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ember);
+}
+.run-row-sub {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 6px;
+}
 
 /* --- dev panel (never shipped: gated on import.meta.env.DEV) ---------------- */
 
