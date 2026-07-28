@@ -1,6 +1,0 @@
-# Supabase Edge Functions live here (Deno).
-# Planned:
-#   igdb-token/    - exchanges TWITCH_CLIENT_ID/SECRET for an IGDB bearer token
-#   global-average/ - aggregates and serves per-game community death averages
-#
-# Create one with: supabase functions new igdb-token

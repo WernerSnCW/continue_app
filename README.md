@@ -70,6 +70,37 @@ work before writing any code against IGDB:
 node scripts/check-igdb.mjs
 ```
 
+## IGDB data layer
+
+Two Edge Functions in `services/continue-api/supabase/functions`:
+
+| Function | Purpose |
+| --- | --- |
+| `igdb-token` | Returns a valid IGDB bearer token. Exchanges via Twitch `client_credentials` only when the cached token is missing or within 24h of expiry — never per request. |
+| `igdb-search` | Game search for the picker. Uses the token server-side (never exposes it) and collapses editions onto canonical ids. |
+
+The token is cached in `public.igdb_token_cache`, a single-row table with RLS
+on and no policies — service role only. Credentials live in Supabase secrets,
+not in the repo:
+
+```bash
+supabase secrets set TWITCH_CLIENT_ID=... TWITCH_CLIENT_SECRET=...
+```
+
+**Why editions are collapsed:** IGDB lists every retail edition as its own row
+with its own id (Deluxe, Collector's, Launch...). If the picker offered those,
+death counts for one game would fragment across several ids and the global
+average would be meaningless. Rows carrying `version_parent` collapse onto that
+parent; rows without one stay distinct. `game_type` then filters out DLC,
+expansions, bundles, mods and ports — remakes and remasters are kept on purpose,
+since Demon's Souls (2020) is its own playthrough.
+
+Verify the collapse rule against live IGDB:
+
+```bash
+node scripts/check-igdb-search.mjs
+```
+
 ## Branches
 
 `dev` is the working branch. Don't commit directly to `main`.
