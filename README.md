@@ -63,6 +63,13 @@ Copy `.env.example` to `.env` and fill in the values.
 | `SUPABASE_ANON_KEY` | app | Safe to ship in the client |
 | `SUPABASE_SERVICE_ROLE_KEY` | Edge Function | **Never** ship to the client |
 
+Once `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` are filled in, confirm they
+work before writing any code against IGDB:
+
+```bash
+node scripts/check-igdb.mjs
+```
+
 ## Branches
 
 `dev` is the working branch. Don't commit directly to `main`.
