@@ -116,106 +116,169 @@ function reverbBus(c: AudioContext, wet: number): GainNode {
   return bus;
 }
 
+// --- chiptune ---------------------------------------------------------------
+
 /**
- * The death sound: a sustained dissonant drone — a horror sting, not a hit.
+ * Builds an NES-style pulse wave.
  *
- * Three earlier attempts all read as a drum, and the reason was structural,
- * not a matter of tuning: a low SINE with a DECAY envelope is the textbook
- * recipe for synthesising a kick drum. Swapping partials and slowing the
- * attack couldn't fix that, because the underlying material was still
- * percussive.
+ * Web Audio's built-in 'square' is a fixed 50% duty cycle, which was only one
+ * of the timbres the NES could produce — its pulse channels also did 12.5% and
+ * 25%, and those thinner, more nasal tones are a big part of why chiptune
+ * sounds like chiptune. The Fourier coefficients of a pulse of duty d are
+ * (2/nπ)·sin(nπd), so the wave can be built exactly rather than approximated.
+ */
+function pulseWave(c: AudioContext, duty: number, harmonics = 28): PeriodicWave {
+  const real = new Float32Array(harmonics + 1);
+  const imag = new Float32Array(harmonics + 1);
+  for (let n = 1; n <= harmonics; n++) {
+    imag[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * duty);
+  }
+  return c.createPeriodicWave(real, imag);
+}
+
+const waveCache = new Map<number, PeriodicWave>();
+function cachedPulse(c: AudioContext, duty: number): PeriodicWave {
+  let w = waveCache.get(duty);
+  if (!w) {
+    w = pulseWave(c, duty);
+    waveCache.set(duty, w);
+  }
+  return w;
+}
+
+/**
+ * One chip-style note: hard on, flat sustain, hard off.
  *
- * What separates a drone from a drum is sustain. A drum has none — it decays
- * from the moment it starts. So this holds at full level for most of a second
- * before releasing, and uses sawtooth oscillators through a moving filter,
- * which gives the harmonic density of bowed strings or massed voices rather
- * than the pure, hollow tone of a struck membrane.
+ * No smooth ramps anywhere. 8-bit envelopes were stepped values written to a
+ * register, and that abruptness is most of the character — exponential curves
+ * immediately make it sound like a modern synth instead.
+ */
+function chipNote(
+  c: AudioContext,
+  dest: AudioNode,
+  opts: {
+    freq: number;
+    start: number;
+    duration: number;
+    duty?: number;
+    level?: number;
+    /** Target frequency at the end of the note, for the power-down slide. */
+    bendTo?: number;
+    vibrato?: boolean;
+  },
+): void {
+  const { freq, start, duration, duty = 0.5, level = 0.18, bendTo, vibrato } = opts;
+
+  const osc = c.createOscillator();
+  osc.setPeriodicWave(cachedPulse(c, duty));
+  osc.frequency.setValueAtTime(freq, start);
+
+  if (bendTo) {
+    // Stepped rather than glided: real chips retuned in discrete register
+    // writes, which is why old hardware slides sound like a staircase.
+    const steps = 12;
+    for (let i = 1; i <= steps; i++) {
+      osc.frequency.setValueAtTime(
+        freq + (bendTo - freq) * (i / steps),
+        start + (duration * i) / steps,
+      );
+    }
+  }
+
+  if (vibrato) {
+    const lfo = c.createOscillator();
+    const depth = c.createGain();
+    lfo.frequency.value = 11;
+    depth.gain.value = freq * 0.012;
+    lfo.connect(depth).connect(osc.frequency);
+    lfo.start(start);
+    lfo.stop(start + duration);
+  }
+
+  const g = c.createGain();
+  g.gain.setValueAtTime(0, start);
+  g.gain.setValueAtTime(level, start + 0.004);
+  g.gain.setValueAtTime(level, start + duration - 0.02);
+  g.gain.linearRampToValueAtTime(0, start + duration);
+
+  osc.connect(g).connect(dest);
+  osc.start(start);
+  osc.stop(start + duration + 0.02);
+}
+
+/**
+ * The death sound: a classic 8-bit game-over jingle.
+ *
+ * Four earlier attempts chased "ominous" and kept landing on percussion. This
+ * is a different and far more defined brief: a short descending run in a minor
+ * key on pulse waves, triangle bass underneath, ending on a held note that
+ * bends an octave down like the power draining out.
  */
 export function playDeath(): void {
   if (isMuted()) return;
   const c = audio();
   if (!c) return;
 
-  const t = c.currentTime;
-  const ATTACK = 0.2;
-  const HOLD = 0.6; // the plateau — this is what a drum can never have
-  const RELEASE = 1.2;
-  const END = ATTACK + HOLD + RELEASE;
-
-  // Heavily wet: the reverb tail is the point. The dry signal is just the
-  // thing that excites the space.
-  // Normalised convolution costs a lot of level, so the source is driven hard
-  // and the wet/dry split brings it back to a sensible output.
+  const t = c.currentTime + 0.01;
   const out = c.createGain();
-  out.gain.value = 2.6;
-  out.connect(reverbBus(c, 0.62));
+  out.gain.value = 1.15;
+  // Only a hint of room so it isn't harsh through a phone speaker. Chiptune
+  // went from a sound chip straight to a TV — a big tail fights the whole idea.
+  out.connect(reverbBus(c, 0.12));
 
-  // Filter opens as it swells then closes as it dies, so the timbre moves
-  // through the sound instead of just fading.
-  const filter = c.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.Q.value = 3.2;
-  filter.frequency.setValueAtTime(260, t);
-  filter.frequency.linearRampToValueAtTime(1150, t + ATTACK + 0.15);
-  filter.frequency.exponentialRampToValueAtTime(240, t + END);
-  filter.connect(out);
+  const STEP = 0.105; // tempo of the descending run
 
-  // Shared swell-hold-release shape.
-  const env = c.createGain();
-  env.gain.setValueAtTime(0.0001, t);
-  env.gain.linearRampToValueAtTime(1, t + ATTACK);
-  env.gain.setValueAtTime(1, t + ATTACK + HOLD);
-  env.gain.exponentialRampToValueAtTime(0.0001, t + END);
-  env.connect(filter);
+  // Descent in A minor: C5, B4, A4, G#4. Falling pitch is the entire
+  // game-over trope, and the semitone at the end tightens it.
+  const RUN: readonly (readonly [number, number])[] = [
+    [523.25, 0], // C5
+    [493.88, 1], // B4
+    [440.0, 2], // A4
+    [415.3, 3], // G#4
+  ];
 
-  // Slow tremolo — an unsteady, breathing quality.
-  const lfo = c.createOscillator();
-  const lfoDepth = c.createGain();
-  lfo.frequency.value = 4.7;
-  lfoDepth.gain.value = 0.16;
-  lfo.connect(lfoDepth).connect(env.gain);
-  lfo.start(t);
-  lfo.stop(t + END);
-
-  // A2, plus a minor second and a tritone above it. Both intervals are
-  // classic dread — they refuse to resolve.
-  const CLUSTER = [110, 116.54, 155.56];
-
-  for (const freq of CLUSTER) {
-    // Two detuned saws per note: the beating between them is what makes a
-    // synth cluster sound uneasy rather than clean.
-    for (const cents of [-7, +7]) {
-      const osc = c.createOscillator();
-      const g = c.createGain();
-      osc.type = 'sawtooth';
-      const f = freq * Math.pow(2, cents / 1200);
-      osc.frequency.setValueAtTime(f, t);
-      // Sinks a whole tone over its life — the floor giving way.
-      osc.frequency.linearRampToValueAtTime(f * 0.945, t + END);
-      g.gain.value = 0.09;
-      osc.connect(g).connect(env);
-      osc.start(t);
-      osc.stop(t + END + 0.05);
-    }
+  for (const [freq, i] of RUN) {
+    chipNote(c, out, {
+      freq,
+      start: t + i * STEP,
+      duration: STEP * 0.92,
+      duty: 0.5,
+      level: 0.24,
+    });
   }
 
-  // Sustained filtered noise for air. Sustained, not a burst — a burst is a
-  // transient, and transients are what made this sound like a drum.
-  const frames = Math.floor(c.sampleRate * END);
-  const buffer = c.createBuffer(1, frames, c.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
-  const noise = c.createBufferSource();
-  noise.buffer = buffer;
-  const nf = c.createBiquadFilter();
-  nf.type = 'bandpass';
-  nf.frequency.value = 520;
-  nf.Q.value = 0.8;
-  const ng = c.createGain();
-  ng.gain.value = 0.05;
-  noise.connect(nf).connect(ng).connect(env);
-  noise.start(t);
-  noise.stop(t + END);
+  // The landing: held, thinner, wobbling, and sagging an octave — the sound
+  // of the power draining out.
+  const landing = t + RUN.length * STEP;
+  chipNote(c, out, {
+    freq: 392.0, // G4
+    start: landing,
+    duration: 0.62,
+    duty: 0.25,
+    level: 0.26,
+    bendTo: 196.0,
+    vibrato: true,
+  });
+
+  // Triangle-channel bass, the way the NES handled its low end.
+  const BASS: readonly (readonly [number, number, number])[] = [
+    [130.81, 0, STEP * 2], // C3
+    [110.0, STEP * 2, STEP * 2], // A2
+    [98.0, STEP * 4, 0.62], // G2, under the landing
+  ];
+  for (const [freq, offset, dur] of BASS) {
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, t + offset);
+    g.gain.setValueAtTime(0, t + offset);
+    g.gain.setValueAtTime(0.12, t + offset + 0.004);
+    g.gain.setValueAtTime(0.12, t + offset + dur - 0.02);
+    g.gain.linearRampToValueAtTime(0, t + offset + dur);
+    osc.connect(g).connect(out);
+    osc.start(t + offset);
+    osc.stop(t + offset + dur + 0.02);
+  }
 }
 
 /** Soft UI tick for ordinary taps. Deliberately quiet and short. */
