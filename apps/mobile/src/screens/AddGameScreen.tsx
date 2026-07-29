@@ -9,11 +9,19 @@ const SUGGESTED = ['Dark Souls III', 'Bloodborne', 'Lies of P', 'Nine Sols', 'Lo
 interface Props {
   onBack: () => void;
   onStart: (result: IgdbSearchResult, cycle: number) => void;
+  /** Starts a fresh run on a game that's already tracked, rather than duplicating it. */
+  onStartRunOnExisting: (igdbId: number, cycle: number) => void;
   existingIgdbIds: ReadonlySet<number>;
   unlimited: boolean;
 }
 
-export function AddGameScreen({ onBack, onStart, existingIgdbIds, unlimited }: Props) {
+export function AddGameScreen({
+  onBack,
+  onStart,
+  onStartRunOnExisting,
+  existingIgdbIds,
+  unlimited,
+}: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<IgdbSearchResult[]>([]);
   const [selected, setSelected] = useState<IgdbSearchResult | null>(null);
@@ -115,7 +123,6 @@ export function AddGameScreen({ onBack, onStart, existingIgdbIds, unlimited }: P
                 <button
                   className={`result-row${selected?.id === r.id ? ' selected' : ''}`}
                   onClick={() => setSelected(r)}
-                  disabled={already}
                 >
                   {r.coverUrl ? (
                     <img className="cover" src={r.coverUrl} alt="" loading="lazy" />
@@ -155,13 +162,32 @@ export function AddGameScreen({ onBack, onStart, existingIgdbIds, unlimited }: P
       <button
         className="primary-btn"
         disabled={!selected}
-        onClick={() => selected && onStart(selected, cycle)}
+        onClick={() => {
+          if (!selected) return;
+          // A tracked game keeps one entry with many runs — duplicating it
+          // would split its tally and its place in the ranking in two.
+          if (existingIgdbIds.has(selected.id)) onStartRunOnExisting(selected.id, cycle);
+          else onStart(selected, cycle);
+        }}
       >
-        {selected ? `Start tracking ${selected.name}` : 'Start tracking'}
+        {!selected
+          ? 'Start tracking'
+          : existingIgdbIds.has(selected.id)
+            ? `Start a ${segments.find((s) => s.cycle === cycle)?.label} on ${selected.name}`
+            : `Start tracking ${selected.name}`}
       </button>
       <p className="ghost-note">
-        Free plan: {FREE_TIER_GAME_LIMIT} games at a time. Swap one out later and its history is
-        archived, not deleted.
+        {selected && existingIgdbIds.has(selected.id) ? (
+          <>
+            You're already tracking {selected.name}. Runs live inside a game, so this starts a new
+            one and keeps every previous run's tally intact.
+          </>
+        ) : (
+          <>
+            Free plan: {FREE_TIER_GAME_LIMIT} games at a time. Swap one out later and its history is
+            archived, not deleted.
+          </>
+        )}
       </p>
     </div>
   );

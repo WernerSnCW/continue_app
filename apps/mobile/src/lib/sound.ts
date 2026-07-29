@@ -43,17 +43,19 @@ export function setMuted(muted: boolean): void {
 }
 
 /**
- * The death sound: a low, dissonant toll that swells and sinks.
+ * The death sound: a sustained dissonant drone — a horror sting, not a hit.
  *
- * Two earlier attempts read as a drum. The cause both times was the attack —
- * a noise transient and a near-instant rise. Percussion is defined by that
- * sharp onset, so no amount of tuning the tail fixes it. This version has no
- * noise layer at all and swells over 90–160ms instead, which puts it in
- * "something is looming" territory rather than "something was hit".
+ * Three earlier attempts all read as a drum, and the reason was structural,
+ * not a matter of tuning: a low SINE with a DECAY envelope is the textbook
+ * recipe for synthesising a kick drum. Swapping partials and slowing the
+ * attack couldn't fix that, because the underlying material was still
+ * percussive.
  *
- * The pitch content is deliberately unstable: partials a minor second and a
- * tritone above the root, a barely-detuned unison that beats slowly against
- * itself, and everything sagging in pitch as it decays.
+ * What separates a drone from a drum is sustain. A drum has none — it decays
+ * from the moment it starts. So this holds at full level for most of a second
+ * before releasing, and uses sawtooth oscillators through a moving filter,
+ * which gives the harmonic density of bowed strings or massed voices rather
+ * than the pure, hollow tone of a struck membrane.
  */
 export function playDeath(): void {
   if (isMuted()) return;
@@ -61,54 +63,81 @@ export function playDeath(): void {
   if (!c) return;
 
   const t = c.currentTime;
+  const ATTACK = 0.22;
+  const HOLD = 0.75; // the plateau — this is what a drum can never have
+  const RELEASE = 1.5;
+  const END = ATTACK + HOLD + RELEASE;
+
   const out = c.createGain();
-  out.gain.value = 0.85;
+  out.gain.value = 0.5;
   out.connect(c.destination);
 
-  // Filter closing from 1800Hz down to 600Hz — the sound darkens as it decays,
-  // like something receding. Static brightness is what made earlier versions
-  // sit there like a hit rather than a presence.
-  const tone = c.createBiquadFilter();
-  tone.type = 'lowpass';
-  tone.Q.value = 1.1;
-  tone.frequency.setValueAtTime(1800, t);
-  tone.frequency.exponentialRampToValueAtTime(600, t + 2.6);
-  tone.connect(out);
+  // Filter opens as it swells then closes as it dies, so the timbre moves
+  // through the sound instead of just fading.
+  const filter = c.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.Q.value = 3.2;
+  filter.frequency.setValueAtTime(260, t);
+  filter.frequency.linearRampToValueAtTime(1150, t + ATTACK + 0.15);
+  filter.frequency.exponentialRampToValueAtTime(240, t + END);
+  filter.connect(out);
 
-  const ROOT = 65.41; // C2 — low and hollow.
+  // Shared swell-hold-release shape.
+  const env = c.createGain();
+  env.gain.setValueAtTime(0.0001, t);
+  env.gain.linearRampToValueAtTime(1, t + ATTACK);
+  env.gain.setValueAtTime(1, t + ATTACK + HOLD);
+  env.gain.exponentialRampToValueAtTime(0.0001, t + END);
+  env.connect(filter);
 
-  // [ratio, level, decay, attack]
-  // The 1.06 and 2.83 ratios are deliberately dissonant against the root: a
-  // minor second and a tritone. Consonant partials sound like a musical note;
-  // these sound wrong, which is the point.
-  const VOICES: readonly (readonly [number, number, number, number])[] = [
-    [0.5, 0.34, 4.2, 0.14], // sub drone — swells in underneath
-    [1.0, 0.30, 3.8, 0.09], // root
-    [1.006, 0.22, 3.6, 0.11], // barely detuned: slow beating, unsettled
-    [1.06, 0.09, 2.8, 0.16], // minor second — the dread interval
-    [2.0, 0.11, 2.4, 0.07],
-    [2.83, 0.07, 1.9, 0.12], // tritone
-    [4.05, 0.035, 1.2, 0.05],
-  ];
+  // Slow tremolo — an unsteady, breathing quality.
+  const lfo = c.createOscillator();
+  const lfoDepth = c.createGain();
+  lfo.frequency.value = 4.7;
+  lfoDepth.gain.value = 0.16;
+  lfo.connect(lfoDepth).connect(env.gain);
+  lfo.start(t);
+  lfo.stop(t + END);
 
-  for (const [ratio, level, decay, attack] of VOICES) {
-    const osc = c.createOscillator();
-    const g = c.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(ROOT * ratio, t);
-    // Sags downward as it rings out — sinking rather than settling.
-    osc.frequency.linearRampToValueAtTime(ROOT * ratio * 0.985, t + decay);
-    // Slow swell instead of an instant strike. A fast attack is the single
-    // thing that makes any of this read as percussion.
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(level, t + attack);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
-    osc.connect(g).connect(tone);
-    osc.start(t);
-    osc.stop(t + decay + 0.05);
+  // A2, plus a minor second and a tritone above it. Both intervals are
+  // classic dread — they refuse to resolve.
+  const CLUSTER = [110, 116.54, 155.56];
+
+  for (const freq of CLUSTER) {
+    // Two detuned saws per note: the beating between them is what makes a
+    // synth cluster sound uneasy rather than clean.
+    for (const cents of [-7, +7]) {
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.type = 'sawtooth';
+      const f = freq * Math.pow(2, cents / 1200);
+      osc.frequency.setValueAtTime(f, t);
+      // Sinks a whole tone over its life — the floor giving way.
+      osc.frequency.linearRampToValueAtTime(f * 0.945, t + END);
+      g.gain.value = 0.09;
+      osc.connect(g).connect(env);
+      osc.start(t);
+      osc.stop(t + END + 0.05);
+    }
   }
 
-  // No noise transient at all — that was the drum.
+  // Sustained filtered noise for air. Sustained, not a burst — a burst is a
+  // transient, and transients are what made this sound like a drum.
+  const frames = Math.floor(c.sampleRate * END);
+  const buffer = c.createBuffer(1, frames, c.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+  const noise = c.createBufferSource();
+  noise.buffer = buffer;
+  const nf = c.createBiquadFilter();
+  nf.type = 'bandpass';
+  nf.frequency.value = 520;
+  nf.Q.value = 0.8;
+  const ng = c.createGain();
+  ng.gain.value = 0.05;
+  noise.connect(nf).connect(ng).connect(env);
+  noise.start(t);
+  noise.stop(t + END);
 }
 
 /** Soft UI tick for ordinary taps. Deliberately quiet and short. */

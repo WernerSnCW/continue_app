@@ -11,6 +11,7 @@ import { RankingScreen } from './screens/RankingScreen';
 import {
   activeRun,
   archivedGames,
+  deathsForRun,
   emptyState,
   load,
   newDeath,
@@ -67,6 +68,37 @@ export default function App() {
       return;
     }
     commitGame(result, cycle);
+  };
+
+  /**
+   * Starts a fresh run on a game that's already tracked. The alternative —
+   * letting the same game be added twice — would split its deaths across two
+   * ids, breaking its stats, its ranking position, and (later) its match
+   * against the global average.
+   */
+  const startRunOnExisting = (igdbId: number, cycle: number) => {
+    const game = state.games.find((g) => g.igdbId === igdbId);
+    if (!game) return;
+    const current = activeRun(state, game.id);
+
+    // An untouched run at the same cycle is already what they asked for.
+    if (current && current.cycle === cycle && deathsForRun(state, current.id) === 0) {
+      setView({ name: 'counter', gameId: game.id });
+      return;
+    }
+
+    const run = newRun(game.id, cycle);
+    const completedAt = new Date().toISOString();
+    setState((s) => ({
+      ...s,
+      // Un-archive it too: they've just asked to play it again.
+      games: s.games.map((g) => (g.id === game.id ? { ...g, archived: false } : g)),
+      runs: [
+        ...s.runs.map((r) => (r.id === current?.id ? { ...r, completedAt } : r)),
+        run,
+      ],
+    }));
+    setView({ name: 'counter', gameId: game.id });
   };
 
   const recordDeath = (gameId: string, runSeconds: number | null) =>
@@ -154,6 +186,7 @@ export default function App() {
           <AddGameScreen
             onBack={() => setView({ name: 'home' })}
             onStart={startTracking}
+            onStartRunOnExisting={startRunOnExisting}
             existingIgdbIds={existingIgdbIds}
             unlimited={state.entitlement.unlimitedGames}
           />
