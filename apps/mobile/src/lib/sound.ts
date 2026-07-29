@@ -67,8 +67,18 @@ function noiseBurst(c: AudioContext, dest: AudioNode, duration: number, cutoff: 
 }
 
 /**
- * The death sound: a struck-bell transient over a sub drop. Meant to land
- * like a hit — weighty and final, not a notification chime.
+ * The death sound: a struck funeral bell.
+ *
+ * An earlier version layered a noise transient over a fast pitch-drop, which
+ * read as a drum hit — percussive and generic. A bell is the right instrument
+ * here: bells are *inharmonic*, meaning their partials aren't whole-number
+ * multiples of the fundamental, which is exactly what makes them sound like
+ * struck metal rather than a tuned note. The ratios below are close to a real
+ * bell's hum/prime/tierce/quint/nominal, with the tierce a minor third so the
+ * whole thing rings minor.
+ *
+ * Higher partials decay fastest, as they do on real metal — that's what gives
+ * the long, hollow tail instead of a uniform fade.
  */
 export function playDeath(): void {
   if (isMuted()) return;
@@ -77,40 +87,47 @@ export function playDeath(): void {
 
   const t = c.currentTime;
   const out = c.createGain();
-  out.gain.value = 0.9;
+  out.gain.value = 0.85;
   out.connect(c.destination);
 
-  noiseBurst(c, out, 0.18, 2200, 0.35);
+  // Gentle high-cut so the strike never turns brittle on phone speakers.
+  const tone = c.createBiquadFilter();
+  tone.type = 'lowpass';
+  tone.frequency.value = 5200;
+  tone.Q.value = 0.4;
+  tone.connect(out);
 
-  // Sub drop — the gut punch.
-  const sub = c.createOscillator();
-  const subGain = c.createGain();
-  sub.type = 'sine';
-  sub.frequency.setValueAtTime(130, t);
-  sub.frequency.exponentialRampToValueAtTime(38, t + 0.42);
-  subGain.gain.setValueAtTime(0.0001, t);
-  subGain.gain.exponentialRampToValueAtTime(0.55, t + 0.02);
-  subGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.75);
-  sub.connect(subGain).connect(out);
-  sub.start(t);
-  sub.stop(t + 0.8);
+  const FUNDAMENTAL = 98; // low G — heavy without being muddy on a phone.
 
-  // Dissonant minor-second ring on top so it reads as ominous, not neutral.
-  for (const [freq, level, decay] of [
-    [220, 0.16, 0.9],
-    [233.1, 0.11, 0.85],
-  ] as const) {
+  // [ratio, level, decay seconds]
+  const PARTIALS: readonly (readonly [number, number, number])[] = [
+    [0.5, 0.30, 3.4], // hum tone — the weight underneath
+    [1.0, 0.26, 2.9], // prime
+    [1.19, 0.10, 2.2], // slight detune against the prime; produces slow beating
+    [2.4, 0.14, 1.7], // tierce (minor) — the mournful colour
+    [3.0, 0.09, 1.2], // quint
+    [4.2, 0.06, 0.8], // nominal — mostly gone by the time you notice it
+    [5.4, 0.035, 0.5], // strike shimmer
+  ];
+
+  for (const [ratio, level, decay] of PARTIALS) {
     const osc = c.createOscillator();
     const g = c.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = freq;
+    osc.type = 'sine';
+    osc.frequency.value = FUNDAMENTAL * ratio;
+    // Bells sag very slightly in pitch as they ring down.
+    osc.frequency.linearRampToValueAtTime(FUNDAMENTAL * ratio * 0.995, t + decay);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(level, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(level, t + 0.008);
     g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
-    osc.connect(g).connect(out);
+    osc.connect(g).connect(tone);
     osc.start(t);
     osc.stop(t + decay + 0.05);
   }
+
+  // A whisper of noise for the clapper contact — far quieter and shorter than
+  // before, so it reads as "metal struck" rather than "drum".
+  noiseBurst(c, tone, 0.05, 3400, 0.10);
 }
 
 /** Soft UI tick for ordinary taps. Deliberately quiet and short. */

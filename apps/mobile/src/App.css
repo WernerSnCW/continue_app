@@ -55,6 +55,24 @@
 .icon-skull .eye.l { left: 5px; }
 .icon-skull .eye.r { right: 5px; }
 
+/* Small ember skull that sits beside a death tally on the game cards. */
+.icon-skull.skull-tally { width: 13px; height: 13px; }
+.icon-skull.skull-tally::before { background: var(--ember); }
+.icon-skull.skull-tally::after {
+  width: 6px;
+  height: 4px;
+  bottom: -2px;
+  background: var(--ember);
+}
+.icon-skull.skull-tally .eye {
+  width: 2.5px;
+  height: 3px;
+  top: 4.5px;
+  background: var(--card);
+}
+.icon-skull.skull-tally .eye.l { left: 3px; }
+.icon-skull.skull-tally .eye.r { right: 3px; }
+
 .icon-swords {
   width: 24px;
   height: 24px;
@@ -202,6 +220,9 @@
   color: var(--ember);
   font-weight: 700;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .game-card.is-archived { opacity: 0.6; }
 
@@ -296,6 +317,69 @@
   margin-bottom: 18px;
 }
 
+.counter-screen {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Game cover as a soft backdrop: blurred, dimmed and faded out toward the
+   bottom so the tally and controls keep their contrast. */
+.cover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-size: cover;
+  background-position: center 22%;
+  filter: blur(16px) saturate(125%);
+  opacity: 0.62;
+  transform: scale(1.18);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.7) 40%,
+    rgba(0, 0, 0, 0.25) 68%,
+    transparent 88%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.7) 40%,
+    rgba(0, 0, 0, 0.25) 68%,
+    transparent 88%
+  );
+}
+
+/* Scrim so text stays legible however bright the cover is. Light at the top
+   where the art shows through, opaque lower down behind the tally. */
+.counter-screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgba(11, 11, 14, 0.32) 0%,
+    rgba(11, 11, 14, 0.62) 45%,
+    rgba(11, 11, 14, 0.88) 100%
+  );
+  pointer-events: none;
+}
+
+.pace-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 14px 0 2px;
+}
+.pace-line strong {
+  color: var(--gold);
+  font-size: 13px;
+}
+
 .counter-top {
   display: flex;
   align-items: center;
@@ -304,14 +388,88 @@
 }
 
 .timer-row {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   margin-bottom: 16px;
+  text-align: left;
+  transition: border-color 0.2s ease;
+}
+.timer-row.is-running {
+  border-color: rgba(142, 227, 107, 0.55);
+  background: linear-gradient(90deg, rgba(142, 227, 107, 0.07), var(--card));
+}
+.timer-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+.timer-meta { flex: 1; min-width: 0; }
+.timer-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 1px;
+}
+.timer-state {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--text-faint);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+.timer-state.on {
+  color: var(--toxic);
+  border-color: var(--toxic);
+}
+
+/* Prompt shown on arrival, explaining why the tracker is worth using. */
+.tracker-prompt {
+  background: linear-gradient(160deg, var(--card-2), var(--card));
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.tp-title {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 7px;
+}
+.tp-body {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+}
+.tp-quiet { color: var(--text-faint); font-size: 10.5px; }
+.tp-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.tp-ghost {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 8px 14px;
+}
+.tp-primary {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #2a0c02;
+  background: linear-gradient(180deg, #ff7a52, var(--ember));
+  border-radius: 9px;
+  padding: 8px 16px;
 }
 .timer-btn {
   width: 26px;
@@ -720,6 +878,92 @@
   color: var(--text-faint);
   margin-top: 6px;
 }
+
+/* --- death timeline (stats screen) ----------------------------------------- */
+
+.timeline { margin-top: 10px; }
+.timeline-track {
+  position: relative;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(255, 90, 54, 0.06), rgba(255, 90, 54, 0.14));
+  border: 1px solid var(--line);
+}
+.timeline-mark {
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 10px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--ember);
+  transform: translateY(-50%);
+  box-shadow: 0 0 6px rgba(255, 90, 54, 0.6);
+}
+.timeline-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-faint);
+  margin-top: 3px;
+}
+
+/* --- help tips -------------------------------------------------------------- */
+
+.helptip-wrap { position: relative; display: inline-flex; align-items: center; }
+.helptip-btn {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-faint);
+  padding: 2px 3px;
+  border-radius: 50%;
+}
+.helptip-btn[aria-expanded='true'] { color: var(--gold); }
+.helptip-bubble.below {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+
+.helptip-bubble {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: -8px;
+  z-index: 30;
+  width: min(15rem, 78vw);
+  display: block;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  text-align: left;
+  white-space: normal;
+}
+.helptip-title {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+.helptip-body {
+  display: block;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+/* Ranking rows are buttons now that they open the game's stats. */
+.diff-row,
+.diff-locked-row {
+  width: 100%;
+  text-align: left;
+  background: none;
+}
+.diff-row:active { opacity: 0.7; }
 
 /* --- dev panel (never shipped: gated on import.meta.env.DEV) ---------------- */
 

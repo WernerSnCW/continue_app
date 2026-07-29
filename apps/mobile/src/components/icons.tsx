@@ -4,8 +4,8 @@
  * any particular game.
  */
 
-export const SkullIcon = () => (
-  <span className="icon icon-skull" aria-hidden="true">
+export const SkullIcon = ({ className = '' }: { className?: string }) => (
+  <span className={`icon icon-skull ${className}`.trim()} aria-hidden="true">
     <span className="eye l" />
     <span className="eye r" />
   </span>

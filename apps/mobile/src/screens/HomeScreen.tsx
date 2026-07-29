@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Game } from '@continue/shared';
 import { FREE_TIER_GAME_LIMIT } from '@continue/shared';
 import { isMuted, playClick, setMuted } from '../lib/sound';
-import { BarsIcon } from '../components/icons';
+import { BarsIcon, SkullIcon } from '../components/icons';
 import { Logo } from '../components/Logo';
 import { formatHours } from '../lib/ranking';
 import {
@@ -144,7 +144,10 @@ function GameCard({
         <p className="name">{game.name}</p>
         <span className="run">{sub}</span>
       </span>
-      <span className="tally">{deaths}</span>
+      <span className="tally">
+        <SkullIcon className="skull-tally" />
+        {deaths}
+      </span>
     </button>
   );
 }

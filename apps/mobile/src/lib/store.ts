@@ -28,6 +28,7 @@ function migrate(raw: AppState): AppState {
     ...raw,
     games: (raw.games ?? []).map((g) => ({ ...g, archived: g.archived ?? false })),
     runs: (raw.runs ?? []).map((r) => ({ ...r, playedSeconds: r.playedSeconds ?? 0 })),
+    deaths: (raw.deaths ?? []).map((d) => ({ ...d, runSeconds: d.runSeconds ?? null })),
   };
 }
 
@@ -80,8 +81,21 @@ export function newGame(input: Pick<Game, 'igdbId' | 'name' | 'coverUrl'>): Game
   return { id: id(), platform: null, addedAt: now(), archived: false, ...input };
 }
 
-export function newDeath(gameId: string, runId: string): DeathEntry {
-  return { id: id(), gameId, runId, diedAt: now(), bossName: null, location: null, note: null };
+export function newDeath(
+  gameId: string,
+  runId: string,
+  runSeconds: number | null = null,
+): DeathEntry {
+  return {
+    id: id(),
+    gameId,
+    runId,
+    diedAt: now(),
+    runSeconds,
+    bossName: null,
+    location: null,
+    note: null,
+  };
 }
 
 // --- selectors -------------------------------------------------------------

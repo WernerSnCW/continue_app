@@ -27,7 +27,8 @@ type View =
   | { name: 'counter'; gameId: string }
   | { name: 'add' }
   | { name: 'ranking' }
-  | { name: 'stats'; gameId: string }
+  /** `from` so Back returns where you came from, not always the counter. */
+  | { name: 'stats'; gameId: string; from: 'counter' | 'ranking' }
   | { name: 'archive'; pending: IgdbSearchResult; cycle: number };
 
 export default function App() {
@@ -68,11 +69,11 @@ export default function App() {
     commitGame(result, cycle);
   };
 
-  const recordDeath = (gameId: string) =>
+  const recordDeath = (gameId: string, runSeconds: number | null) =>
     setState((s) => {
       const run = activeRun(s, gameId);
       if (!run) return s;
-      return { ...s, deaths: [...s.deaths, newDeath(gameId, run.id)] };
+      return { ...s, deaths: [...s.deaths, newDeath(gameId, run.id, runSeconds)] };
     });
 
   const undoDeath = (gameId: string) =>
@@ -127,11 +128,11 @@ export default function App() {
             state={state}
             gameId={view.gameId}
             onBack={() => setView({ name: 'home' })}
-            onDeath={() => recordDeath(view.gameId)}
+            onDeath={(runSeconds) => recordDeath(view.gameId, runSeconds)}
             onUndo={() => undoDeath(view.gameId)}
             onAdvanceRun={() => advanceRun(view.gameId)}
             onLogTime={(seconds) => logTime(view.gameId, seconds)}
-            onOpenStats={() => setView({ name: 'stats', gameId: view.gameId })}
+            onOpenStats={() => setView({ name: 'stats', gameId: view.gameId, from: 'counter' })}
           />
         );
       case 'stats':
@@ -139,7 +140,13 @@ export default function App() {
           <GameStatsScreen
             state={state}
             gameId={view.gameId}
-            onBack={() => setView({ name: 'counter', gameId: view.gameId })}
+            onBack={() =>
+              setView(
+                view.from === 'ranking'
+                  ? { name: 'ranking' }
+                  : { name: 'counter', gameId: view.gameId },
+              )
+            }
           />
         );
       case 'add':
@@ -152,7 +159,13 @@ export default function App() {
           />
         );
       case 'ranking':
-        return <RankingScreen state={state} onBack={() => setView({ name: 'home' })} />;
+        return (
+          <RankingScreen
+            state={state}
+            onBack={() => setView({ name: 'home' })}
+            onOpenGame={(gameId) => setView({ name: 'stats', gameId, from: 'ranking' })}
+          />
+        );
       case 'archive':
         return (
           <ArchivePickerScreen

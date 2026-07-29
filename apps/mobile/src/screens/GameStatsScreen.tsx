@@ -1,3 +1,4 @@
+import { HelpTip } from '../components/HelpTip';
 import { formatHours } from '../lib/ranking';
 import {
   deathsForGame,
@@ -29,11 +30,20 @@ export function GameStatsScreen({ state, gameId, onBack }: Props) {
 
   const perRun = runs.map((r) => {
     const deaths = deathsForRun(state, r.id);
+    // Timeline markers: deaths that were recorded while the clock was running,
+    // positioned as a percentage across the run's logged time.
+    const timeline = state.deaths
+      .filter((d) => d.runId === r.id && d.runSeconds !== null)
+      .map((d) => d.runSeconds!)
+      .sort((a, b) => a - b);
+    const untimed = deaths - timeline.length;
     return {
       run: r,
       deaths,
       rate: rateOf(deaths, r.playedSeconds),
       share: total > 0 ? deaths / total : 0,
+      timeline,
+      untimed,
     };
   });
 
@@ -90,7 +100,14 @@ export function GameStatsScreen({ state, gameId, onBack }: Props) {
         </div>
         <div className="tile">
           <div className="tile-n">{overallRate !== null ? overallRate.toFixed(1) : '—'}</div>
-          <div className="tile-l">deaths / hr</div>
+          <div className="tile-l">
+            deaths / hr
+            <HelpTip title="Deaths per hour">
+              Total deaths divided by the time you've logged on the session clock for this game.
+              Time only accrues while the timer is running. This is the number the difficulty
+              ranking sorts your games by.
+            </HelpTip>
+          </div>
         </div>
         <div className="tile">
           <div className="tile-n">{runs.length}</div>
@@ -110,24 +127,53 @@ export function GameStatsScreen({ state, gameId, onBack }: Props) {
         By run
       </div>
 
-      {perRun.map(({ run, deaths, rate, share }) => (
-        <div className="run-row" key={run.id}>
-          <div className="run-row-top">
-            <span className="run-row-name">
-              {runLabel(run.cycle)}
-              {!run.completedAt && <span className="run-badge">current</span>}
-            </span>
-            <span className="run-row-deaths">{deaths}</span>
+      {perRun.map(({ run, deaths, rate, share, timeline, untimed }) => {
+        // Scale the timeline to whichever is longer: the logged clock, or the
+        // last death. A death can land past the committed total when the run
+        // is still in progress.
+        const span = Math.max(run.playedSeconds, timeline[timeline.length - 1] ?? 0, 1);
+        return (
+          <div className="run-row" key={run.id}>
+            <div className="run-row-top">
+              <span className="run-row-name">
+                {runLabel(run.cycle)}
+                {!run.completedAt && <span className="run-badge">current</span>}
+              </span>
+              <span className="run-row-deaths">{deaths}</span>
+            </div>
+            <div className="diff-bar-track">
+              <div className="diff-bar-fill" style={{ width: `${Math.round(share * 100)}%` }} />
+            </div>
+
+            {timeline.length > 0 && (
+              <div className="timeline">
+                <div className="timeline-track">
+                  {timeline.map((sec, i) => (
+                    <span
+                      key={i}
+                      className="timeline-mark"
+                      style={{ left: `${(sec / span) * 100}%` }}
+                      title={`Death ${i + 1} at ${formatHours(sec)} in`}
+                    />
+                  ))}
+                </div>
+                <div className="timeline-ends">
+                  <span>0h</span>
+                  <span>{formatHours(span)}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="run-row-sub">
+              <span>
+                {run.playedSeconds > 0 ? `${formatHours(run.playedSeconds)} logged` : 'no time logged'}
+                {untimed > 0 && timeline.length > 0 ? ` · ${untimed} untimed` : ''}
+              </span>
+              <span>{rate !== null ? `${rate.toFixed(1)}/hr` : '—'}</span>
+            </div>
           </div>
-          <div className="diff-bar-track">
-            <div className="diff-bar-fill" style={{ width: `${Math.round(share * 100)}%` }} />
-          </div>
-          <div className="run-row-sub">
-            <span>{run.playedSeconds > 0 ? `${formatHours(run.playedSeconds)} logged` : 'no time logged'}</span>
-            <span>{rate !== null ? `${rate.toFixed(1)}/hr` : '—'}</span>
-          </div>
-        </div>
-      ))}
+        );
+      })}
 
       {(worst || best) && (
         <div className="diff-summary" style={{ marginTop: 6 }}>
@@ -155,7 +201,8 @@ export function GameStatsScreen({ state, gameId, onBack }: Props) {
       )}
 
       <p className="ghost-note" style={{ marginTop: 'auto' }}>
-        Bars show each run's share of your total deaths for this game.
+        Bars show each run's share of your total deaths. Dots below mark when each death happened
+        across the run's logged time.
       </p>
     </div>
   );

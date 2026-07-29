@@ -1,4 +1,6 @@
 import { BarsIcon } from '../components/icons';
+import { HelpTip } from '../components/HelpTip';
+import { playClick } from '../lib/sound';
 import { barWidth, formatHours, rankGames, type RankableGame } from '../lib/ranking';
 import {
   activeRun,
@@ -12,9 +14,10 @@ import {
 interface Props {
   state: AppState;
   onBack: () => void;
+  onOpenGame: (gameId: string) => void;
 }
 
-export function RankingScreen({ state, onBack }: Props) {
+export function RankingScreen({ state, onBack, onOpenGame }: Props) {
   const rankable: RankableGame[] = visibleGames(state).map((g) => {
     const run = activeRun(state, g.id);
     return {
@@ -39,6 +42,21 @@ export function RankingScreen({ state, onBack }: Props) {
           <h2 style={{ fontSize: 17 }}>Difficulty ranking</h2>
           <div className="tag">based on your deaths per hour</div>
         </div>
+        <HelpTip title="How the score works">
+          Each game's <strong>deaths per hour</strong> is worked out from the time you've logged on
+          the session clock. Games are then ranked against each other and scored 1–10 by their{' '}
+          <strong>position</strong> in that order — not by the raw rate.
+          <br />
+          <br />
+          That's deliberate: one brutal half-hour can send a rate sky-high, and if scores followed
+          the rate directly, that single session would squash every other game to the bottom of the
+          scale. Ranking by position means an outlier can only ever take first place — it can't
+          distort the rest.
+          <br />
+          <br />
+          Scores shift as you log more time, and a game needs both deaths and clock time before it
+          can be ranked at all.
+        </HelpTip>
       </div>
 
       {ranked.length === 0 && unranked.length === 0 ? (
@@ -72,7 +90,14 @@ export function RankingScreen({ state, onBack }: Props) {
           )}
 
           {ranked.map((g) => (
-            <div className="diff-row" key={g.gameId}>
+            <button
+              className="diff-row"
+              key={g.gameId}
+              onClick={() => {
+                playClick();
+                onOpenGame(g.gameId);
+              }}
+            >
               <div className="diff-rank">{g.rank}</div>
               <div className="diff-mid">
                 <div className="diff-name">
@@ -89,16 +114,23 @@ export function RankingScreen({ state, onBack }: Props) {
                 <div className={`diff-score-pill ${g.tier}`}>{g.score.toFixed(1)}</div>
                 <div className="diff-rate">{g.rate.toFixed(1)}/hr</div>
               </div>
-            </div>
+            </button>
           ))}
 
           {unranked.map((g) => (
-            <div className="diff-locked-row" key={g.gameId}>
+            <button
+              className="diff-locked-row"
+              key={g.gameId}
+              onClick={() => {
+                playClick();
+                onOpenGame(g.gameId);
+              }}
+            >
               <div className="diff-name-locked">{g.name}</div>
               <div className="diff-locked-note">
                 {g.deaths === 0 ? 'no deaths logged yet' : 'log session time to rank this one'}
               </div>
-            </div>
+            </button>
           ))}
 
           <p className="ghost-note" style={{ marginTop: 'auto' }}>

@@ -57,6 +57,13 @@ export interface DeathEntry {
   gameId: string;
   runId: string;
   diedAt: IsoTimestamp;
+  /**
+   * How many seconds into the run's logged play time this death happened,
+   * giving an ordered timeline within the run. Null when the session timer
+   * wasn't running — the death still counts, it just can't be placed on the
+   * timeline.
+   */
+  runSeconds: number | null;
   /** What killed you, when the user bothers to record it. */
   bossName: string | null;
   location: string | null;
