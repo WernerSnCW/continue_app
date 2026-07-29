@@ -78,13 +78,20 @@ export function HomeScreen({ state, onOpenGame, onAddGame, onOpenRanking }: Prop
         </button>
       )}
 
+      {/* Genuinely inert — it advertises the unlock, it isn't a way in. The
+          swap route lives below it so free-tier users aren't stranded. */}
       {!unlimited && slots >= FREE_TIER_GAME_LIMIT && (
-        <button className="locked-slot" onClick={onAddGame}>
-          <span className="name">{FREE_TIER_GAME_LIMIT + 1}th slot — locked</span>
-          <span className="lock" aria-hidden="true">
-            🔒
-          </span>
-        </button>
+        <>
+          <div className="locked-slot" aria-disabled="true">
+            <span className="name">{FREE_TIER_GAME_LIMIT + 1}th slot — locked</span>
+            <span className="lock" aria-hidden="true">
+              🔒
+            </span>
+          </div>
+          <button className="swap-link" onClick={onAddGame}>
+            Swap a game out instead →
+          </button>
+        </>
       )}
 
       {unlimited && (

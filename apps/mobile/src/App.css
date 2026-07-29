@@ -270,6 +270,17 @@
 .locked-slot .name { font-size: 13px; }
 .locked-slot .lock { font-size: 14px; color: var(--text-faint); }
 
+.swap-link {
+  align-self: center;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  padding: 4px 8px;
+  margin: -6px 0 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--line);
+}
+
 .upsell-bar {
   margin-top: auto;
   background: linear-gradient(90deg, var(--ember-dim), #2a1710);
