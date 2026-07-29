@@ -8,11 +8,15 @@ import { CounterScreen } from './screens/CounterScreen';
 import { GameStatsScreen } from './screens/GameStatsScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { RankingScreen } from './screens/RankingScreen';
+import { TimerBar } from './components/TimerBar';
+import { cancelTrackerReminder, scheduleTrackerReminder } from './lib/notify';
 import {
   activeRun,
   archivedGames,
+  commitTimer,
   deathsForRun,
   latestRun,
+  timedGame,
   emptyState,
   load,
   newDeath,
@@ -40,6 +44,33 @@ export default function App() {
   useEffect(() => {
     save(state);
   }, [state]);
+
+  const timedFor = timedGame(state);
+
+  /**
+   * While the tracker runs, the app is expected to be in the background —
+   * you're playing the game. But a clock left running overnight would ruin
+   * the deaths-per-hour figure, so schedule a reminder when we lose focus and
+   * cancel it the moment we're back.
+   */
+  useEffect(() => {
+    if (!state.timer || !timedFor) {
+      void cancelTrackerReminder();
+      return;
+    }
+    const name = timedFor.name;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') void scheduleTrackerReminder(name);
+      else void cancelTrackerReminder();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    // Cover the case where we're already backgrounded when the timer starts.
+    onVisibility();
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      void cancelTrackerReminder();
+    };
+  }, [state.timer, timedFor]);
 
   const existingIgdbIds = useMemo(
     () => new Set(state.games.map((g) => g.igdbId).filter((id): id is number => id !== null)),
@@ -124,7 +155,9 @@ export default function App() {
    * run is locked so its tally can never drift afterwards.
    */
   const finishRun = (gameId: string) =>
-    setState((s) => {
+    setState((prev) => {
+      // Bank the clock first — a finished run can't accrue time afterwards.
+      const s = commitTimer(prev);
       const run = activeRun(s, gameId);
       if (!run) return s;
       const completedAt = new Date().toISOString();
@@ -133,7 +166,8 @@ export default function App() {
 
   /** Begin a new run at a chosen cycle. Finishes anything still open first. */
   const startRun = (gameId: string, cycle: number) =>
-    setState((s) => {
+    setState((prev) => {
+      const s = commitTimer(prev);
       const open = activeRun(s, gameId);
       const completedAt = new Date().toISOString();
       return {
@@ -151,7 +185,8 @@ export default function App() {
    * cycle with a clean tally.
    */
   const resetRun = (gameId: string) =>
-    setState((s) => {
+    setState((prev) => {
+      const s = commitTimer(prev);
       const run = activeRun(s, gameId) ?? latestRun(s, gameId);
       if (!run) return s;
       return {
@@ -165,22 +200,23 @@ export default function App() {
 
   /** Soft delete: hidden from totals and stats, kept in storage. */
   const archiveRun = (runId: string) =>
-    setState((s) => ({
-      ...s,
-      runs: s.runs.map((r) => (r.id === runId ? { ...r, archived: true } : r)),
+    setState((prev) => {
+      const s = commitTimer(prev);
+      return { ...s, runs: s.runs.map((r) => (r.id === runId ? { ...r, archived: true } : r)) };
+    });
+
+  /** Start the clock on a run. Only one can run at a time, app-wide. */
+  const startTimer = (gameId: string, runId: string) =>
+    // commitTimer banks any clock already running — starting a second game's
+    // tracker shouldn't silently discard the first one's time.
+    setState((prev) => ({
+      ...commitTimer(prev),
+      timer: { gameId, runId, startedAt: Date.now() },
     }));
 
-  const logTime = (gameId: string, seconds: number) =>
-    setState((s) => {
-      const run = activeRun(s, gameId);
-      if (!run) return s;
-      return {
-        ...s,
-        runs: s.runs.map((r) =>
-          r.id === run.id ? { ...r, playedSeconds: r.playedSeconds + seconds } : r,
-        ),
-      };
-    });
+  /** Stop the clock, folding elapsed time into the run it was timing. */
+  const stopTimer = () => setState(commitTimer);
+
 
   const toggleUnlimited = () =>
     setState((s) => ({
@@ -204,7 +240,8 @@ export default function App() {
             onStartRun={(cycle) => startRun(view.gameId, cycle)}
             onResetRun={() => resetRun(view.gameId)}
             onArchiveRun={archiveRun}
-            onLogTime={(seconds) => logTime(view.gameId, seconds)}
+            onStartTimer={(runId) => startTimer(view.gameId, runId)}
+            onStopTimer={stopTimer}
             onOpenStats={() => setView({ name: 'stats', gameId: view.gameId, from: 'counter' })}
           />
         );
@@ -261,8 +298,24 @@ export default function App() {
     }
   };
 
+  // Hidden on the counter of the game being timed — that screen already shows
+  // the full tracker, and two clocks side by side is just noise.
+  const showTimerBar =
+    !!state.timer &&
+    !!timedFor &&
+    !(view.name === 'counter' && view.gameId === state.timer.gameId);
+
   return (
     <>
+      {showTimerBar && (
+        <TimerBar
+          gameName={timedFor.name}
+          baseSeconds={state.runs.find((r) => r.id === state.timer!.runId)?.playedSeconds ?? 0}
+          startedAt={state.timer!.startedAt}
+          onOpen={() => setView({ name: 'counter', gameId: state.timer!.gameId })}
+          onPause={stopTimer}
+        />
+      )}
       {screen()}
       <DevPanel
         unlimited={state.entitlement.unlimitedGames}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BarsIcon, SkullIcon, SwordsIcon } from '../components/icons';
 import { HelpTip } from '../components/HelpTip';
 import { playAdvance, playClick, playDeath } from '../lib/sound';
@@ -8,6 +8,7 @@ import {
   deathsForRun,
   deathsToday,
   latestRun,
+  liveSecondsFor,
   nextCycle,
   runLabel,
   type AppState,
@@ -24,8 +25,8 @@ interface Props {
   onStartRun: (cycle: number) => void;
   onResetRun: () => void;
   onArchiveRun: (runId: string) => void;
-  /** Commits accumulated session seconds to the active run. */
-  onLogTime: (seconds: number) => void;
+  onStartTimer: (runId: string) => void;
+  onStopTimer: () => void;
   onOpenStats: () => void;
 }
 
@@ -45,26 +46,25 @@ export function CounterScreen({
   onStartRun,
   onResetRun,
   onArchiveRun,
-  onLogTime,
+  onStartTimer,
+  onStopTimer,
   onOpenStats,
 }: Props) {
   const game = state.games.find((g) => g.id === gameId);
   const run = activeRun(state, gameId);
   const last = latestRun(state, gameId);
 
-  // The timer is explicitly started, matching the prototype's play/pause
-  // control — only clocked-in time counts toward deaths-per-hour, so idle
-  // app-open time can't quietly deflate the difficulty ranking.
-  const [running, setRunning] = useState(false);
+  // The tracker now lives in app state, not here — it has to keep running
+  // while you browse other screens, and survive the app being backgrounded.
+  const running = state.timer?.runId === run?.id && !!run;
   const [, setTick] = useState(0);
-  const startedAt = useRef<number | null>(null);
   const [flash, setFlash] = useState<{ key: number; n: number } | null>(null);
   const [showPrompt, setShowPrompt] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirm, setConfirm] = useState<'reset' | 'discard' | null>(null);
 
   const committedSeconds = run?.playedSeconds ?? 0;
-  const liveSeconds = running && startedAt.current ? (Date.now() - startedAt.current) / 1000 : 0;
+  const liveSeconds = run ? liveSecondsFor(state, run.id) : 0;
   const sessionSeconds = committedSeconds + liveSeconds;
 
   useEffect(() => {
@@ -73,50 +73,21 @@ export function CounterScreen({
     return () => clearInterval(t);
   }, [running]);
 
-  const commit = useCallback(() => {
-    if (startedAt.current === null) return;
-    const elapsed = (Date.now() - startedAt.current) / 1000;
-    startedAt.current = null;
-    if (elapsed >= 1) onLogTime(Math.floor(elapsed));
-  }, [onLogTime]);
-
-  // Commit on unmount only. This deliberately reads through a ref rather than
-  // depending on `commit`: the parent hands down a fresh onLogTime closure on
-  // every render, so a [commit] dependency would re-run this effect — and fire
-  // its cleanup — on every state change, stopping the clock dead on the first
-  // death tap and silently discarding the rest of the session.
-  const commitRef = useRef(commit);
-  commitRef.current = commit;
-  useEffect(() => () => commitRef.current(), []);
-
-  // A finished run can't be timed — there's nothing to log against.
-  useEffect(() => {
-    if (!run && running) {
-      commitRef.current();
-      setRunning(false);
-    }
-  }, [run, running]);
-
   const startTimer = () => {
-    startedAt.current = Date.now();
-    setRunning(true);
+    if (!run) return;
+    onStartTimer(run.id);
     setShowPrompt(false);
   };
 
   const toggleTimer = () => {
     playClick();
-    if (running) {
-      commit();
-      setRunning(false);
-    } else {
-      startTimer();
-    }
+    if (running) onStopTimer();
+    else startTimer();
   };
 
+  // Leaving no longer stops the clock — that's the whole point of hoisting it.
   const leaveWith = (go: () => void) => {
     playClick();
-    commit();
-    setRunning(false);
     go();
   };
 

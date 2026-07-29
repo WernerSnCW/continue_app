@@ -7,11 +7,26 @@ import type { DeathEntry, Entitlement, Game, Run, RunType } from '@continue/shar
 
 const KEY = 'continue.state.v1';
 
+/**
+ * The play time tracker, hoisted out of the counter screen so it keeps
+ * running while you browse elsewhere.
+ *
+ * `startedAt` is a wall-clock epoch rather than an accumulating counter, so
+ * elapsed time stays correct across navigation, a reload, or the app being
+ * backgrounded and killed — nothing has to be ticking for it to stay accurate.
+ */
+export interface RunningTimer {
+  gameId: string;
+  runId: string;
+  startedAt: number;
+}
+
 export interface AppState {
   games: Game[];
   runs: Run[];
   deaths: DeathEntry[];
   entitlement: Entitlement;
+  timer: RunningTimer | null;
 }
 
 export const emptyState = (): AppState => ({
@@ -19,6 +34,7 @@ export const emptyState = (): AppState => ({
   runs: [],
   deaths: [],
   entitlement: { unlimitedGames: false, purchasedAt: null },
+  timer: null,
 });
 
 /** Older saved states predate `archived` / `playedSeconds`; fill them in. */
@@ -33,6 +49,7 @@ function migrate(raw: AppState): AppState {
       archived: r.archived ?? false,
     })),
     deaths: (raw.deaths ?? []).map((d) => ({ ...d, runSeconds: d.runSeconds ?? null })),
+    timer: raw.timer ?? null,
   };
 }
 
@@ -169,5 +186,35 @@ export const deathsToday = (s: AppState, gameId: string): number => {
   );
 };
 
+/** Seconds accrued on the running clock but not yet committed to the run. */
+export const liveSecondsFor = (s: AppState, runId: string): number =>
+  s.timer?.runId === runId ? Math.max(0, (Date.now() - s.timer.startedAt) / 1000) : 0;
+
+/** A run's play time including whatever is currently on the clock. */
+export const playedSecondsForRun = (s: AppState, run: Run): number =>
+  run.playedSeconds + liveSecondsFor(s, run.id);
+
 export const playedSecondsForGame = (s: AppState, gameId: string): number =>
-  runsForGame(s, gameId).reduce((n, r) => n + r.playedSeconds, 0);
+  runsForGame(s, gameId).reduce((n, r) => n + playedSecondsForRun(s, r), 0);
+
+/**
+ * Folds any running clock into its run and clears the timer. Call before
+ * finishing, resetting or discarding a run so its time isn't left dangling on
+ * a timer pointing at a run that no longer accepts it.
+ */
+export function commitTimer(s: AppState): AppState {
+  if (!s.timer) return s;
+  const { runId } = s.timer;
+  const elapsed = Math.floor(liveSecondsFor(s, runId));
+  return {
+    ...s,
+    runs: s.runs.map((r) =>
+      r.id === runId ? { ...r, playedSeconds: r.playedSeconds + elapsed } : r,
+    ),
+    timer: null,
+  };
+}
+
+/** The game whose clock is running, if any. */
+export const timedGame = (s: AppState): Game | undefined =>
+  s.timer ? s.games.find((g) => g.id === s.timer!.gameId) : undefined;
