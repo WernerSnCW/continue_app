@@ -890,6 +890,104 @@
   margin-top: 6px;
 }
 
+/* --- finished-run panel ----------------------------------------------------- */
+
+.run-done {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 16px;
+  text-align: center;
+}
+.rd-title {
+  font-family: 'Cinzel', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.rd-body {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 16px;
+}
+.rd-actions { display: flex; flex-direction: column; gap: 8px; }
+.text-btn.wide { width: 100%; }
+
+.archived-runs-note {
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--text-faint);
+  border-top: 1px dashed var(--line);
+  padding-top: 10px;
+  margin: 4px 0 0;
+}
+
+/* --- run options sheet ------------------------------------------------------ */
+
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.6);
+}
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  max-width: 30rem;
+  margin: 0 auto;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
+  max-height: 86dvh;
+  overflow-y: auto;
+}
+.sheet-title {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.sheet-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 11px 13px;
+  margin-bottom: 8px;
+}
+.sheet-row:active { background: var(--card-2); }
+.sheet-row.danger { border-color: rgba(255, 90, 54, 0.4); }
+.sr-name { display: block; font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+.sheet-row.danger .sr-name { color: var(--ember); }
+.sr-note { display: block; font-size: 10.5px; line-height: 1.5; color: var(--text-faint); }
+.sheet-cancel {
+  width: 100%;
+  padding: 11px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+.sheet-confirm p {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 14px;
+}
+.sheet-confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
 /* --- death timeline (stats screen) ----------------------------------------- */
 
 .timeline { margin-top: 10px; }

@@ -1,6 +1,7 @@
 import { HelpTip } from '../components/HelpTip';
 import { formatHours } from '../lib/ranking';
 import {
+  archivedRunsForGame,
   deathsForGame,
   deathsForRun,
   deathsToday,
@@ -198,6 +199,15 @@ export function GameStatsScreen({ state, gameId, onBack }: Props) {
             </div>
           )}
         </div>
+      )}
+
+      {archivedRunsForGame(state, gameId).length > 0 && (
+        <p className="archived-runs-note">
+          {archivedRunsForGame(state, gameId).length} discarded run
+          {archivedRunsForGame(state, gameId).length === 1 ? '' : 's'} not counted above —{' '}
+          {archivedRunsForGame(state, gameId).reduce((n, r) => n + deathsForRun(state, r.id), 0)}{' '}
+          deaths kept in storage.
+        </p>
       )}
 
       <p className="ghost-note" style={{ marginTop: 'auto' }}>

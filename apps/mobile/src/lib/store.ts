@@ -27,7 +27,11 @@ function migrate(raw: AppState): AppState {
     ...emptyState(),
     ...raw,
     games: (raw.games ?? []).map((g) => ({ ...g, archived: g.archived ?? false })),
-    runs: (raw.runs ?? []).map((r) => ({ ...r, playedSeconds: r.playedSeconds ?? 0 })),
+    runs: (raw.runs ?? []).map((r) => ({
+      ...r,
+      playedSeconds: r.playedSeconds ?? 0,
+      archived: r.archived ?? false,
+    })),
     deaths: (raw.deaths ?? []).map((d) => ({ ...d, runSeconds: d.runSeconds ?? null })),
   };
 }
@@ -74,6 +78,7 @@ export function newRun(gameId: string, cycle: number): Run {
     startedAt: now(),
     completedAt: null,
     playedSeconds: 0,
+    archived: false,
   };
 }
 
@@ -113,24 +118,53 @@ export const visibleGames = (s: AppState): Game[] =>
 /** Only unarchived games consume a free-tier slot. */
 export const usedSlots = (s: AppState): number => activeGames(s).length;
 
+/** Runs that count: everything except archived ones, oldest cycle first. */
 export const runsForGame = (s: AppState, gameId: string): Run[] =>
-  s.runs.filter((r) => r.gameId === gameId).sort((a, b) => a.cycle - b.cycle);
+  s.runs
+    .filter((r) => r.gameId === gameId && !r.archived)
+    .sort((a, b) => a.cycle - b.cycle || a.startedAt.localeCompare(b.startedAt));
 
-export const activeRun = (s: AppState, gameId: string): Run | undefined => {
+export const archivedRunsForGame = (s: AppState, gameId: string): Run[] =>
+  s.runs.filter((r) => r.gameId === gameId && r.archived);
+
+/**
+ * The run deaths are recorded against — strictly one that is unfinished and
+ * unarchived. Returns undefined when the last run has been finished, which is
+ * what locks a completed run: there is nothing to attribute a death to until
+ * the player starts a new run.
+ */
+export const activeRun = (s: AppState, gameId: string): Run | undefined =>
+  runsForGame(s, gameId).find((r) => !r.completedAt);
+
+/** Most recent run, finished or not — used for labels when nothing is active. */
+export const latestRun = (s: AppState, gameId: string): Run | undefined => {
   const runs = runsForGame(s, gameId);
-  return runs.find((r) => !r.completedAt) ?? runs[runs.length - 1];
+  return runs[runs.length - 1];
 };
 
-export const deathsForGame = (s: AppState, gameId: string): number =>
-  s.deaths.reduce((n, d) => (d.gameId === gameId ? n + 1 : n), 0);
+/** The cycle a "next playthrough" should start on. */
+export const nextCycle = (s: AppState, gameId: string): number => {
+  const runs = runsForGame(s, gameId);
+  return runs.length ? Math.max(...runs.map((r) => r.cycle)) + 1 : 0;
+};
+
+const countedRunIds = (s: AppState, gameId: string): Set<string> =>
+  new Set(runsForGame(s, gameId).map((r) => r.id));
+
+/** Deaths in archived runs don't count toward the game's totals. */
+export const deathsForGame = (s: AppState, gameId: string): number => {
+  const ids = countedRunIds(s, gameId);
+  return s.deaths.reduce((n, d) => (ids.has(d.runId) ? n + 1 : n), 0);
+};
 
 export const deathsForRun = (s: AppState, runId: string): number =>
   s.deaths.reduce((n, d) => (d.runId === runId ? n + 1 : n), 0);
 
 export const deathsToday = (s: AppState, gameId: string): number => {
   const today = new Date().toDateString();
+  const ids = countedRunIds(s, gameId);
   return s.deaths.reduce(
-    (n, d) => (d.gameId === gameId && new Date(d.diedAt).toDateString() === today ? n + 1 : n),
+    (n, d) => (ids.has(d.runId) && new Date(d.diedAt).toDateString() === today ? n + 1 : n),
     0,
   );
 };

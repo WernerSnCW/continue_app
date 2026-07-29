@@ -123,7 +123,7 @@ function GameCard({
   const played = playedSecondsForGame(state, game.id);
 
   const sub = [
-    run ? runLabelLong(run.cycle) : 'First run',
+    run ? runLabelLong(run.cycle) : 'no active run',
     played > 0 ? `${formatHours(played)} played` : null,
     game.archived ? 'archived' : null,
   ]

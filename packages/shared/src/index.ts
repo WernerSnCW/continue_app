@@ -41,8 +41,17 @@ export interface Run {
    */
   cycle: number;
   startedAt: IsoTimestamp;
-  /** Null while the run is still in progress. */
+  /**
+   * Set when the run is finished. A finished run is locked — no further
+   * deaths can be attributed to it, and it keeps its tally forever.
+   */
   completedAt: IsoTimestamp | null;
+  /**
+   * Archived runs drop out of the game's totals, stats and ranking, but the
+   * run and its deaths stay in storage. Same principle as archiving a game:
+   * nothing is ever really deleted.
+   */
+  archived: boolean;
   /**
    * Accumulated play time in seconds, from the counter screen's session timer.
    * Only time the user actually clocked in counts — the difficulty ranking

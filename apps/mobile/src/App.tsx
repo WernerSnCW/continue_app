@@ -12,6 +12,7 @@ import {
   activeRun,
   archivedGames,
   deathsForRun,
+  latestRun,
   emptyState,
   load,
   newDeath,
@@ -117,20 +118,57 @@ export default function App() {
       return { ...s, deaths: s.deaths.filter((_, i) => i !== idx) };
     });
 
-  /** Close the current run and open the next NG+ cycle. */
-  const advanceRun = (gameId: string) =>
+  /**
+   * Finish the current run. Deliberately does NOT start the next one — ending
+   * a playthrough and beginning another are separate decisions, and a finished
+   * run is locked so its tally can never drift afterwards.
+   */
+  const finishRun = (gameId: string) =>
     setState((s) => {
       const run = activeRun(s, gameId);
       if (!run) return s;
       const completedAt = new Date().toISOString();
+      return { ...s, runs: s.runs.map((r) => (r.id === run.id ? { ...r, completedAt } : r)) };
+    });
+
+  /** Begin a new run at a chosen cycle. Finishes anything still open first. */
+  const startRun = (gameId: string, cycle: number) =>
+    setState((s) => {
+      const open = activeRun(s, gameId);
+      const completedAt = new Date().toISOString();
       return {
         ...s,
         runs: [
-          ...s.runs.map((r) => (r.id === run.id ? { ...r, completedAt } : r)),
-          newRun(gameId, run.cycle + 1),
+          ...s.runs.map((r) => (r.id === open?.id ? { ...r, completedAt } : r)),
+          newRun(gameId, cycle),
         ],
       };
     });
+
+  /**
+   * Start the current cycle over. Archives the run rather than wiping it, so
+   * the abandoned attempt is recoverable, then opens a fresh run at the same
+   * cycle with a clean tally.
+   */
+  const resetRun = (gameId: string) =>
+    setState((s) => {
+      const run = activeRun(s, gameId) ?? latestRun(s, gameId);
+      if (!run) return s;
+      return {
+        ...s,
+        runs: [
+          ...s.runs.map((r) => (r.id === run.id ? { ...r, archived: true } : r)),
+          newRun(gameId, run.cycle),
+        ],
+      };
+    });
+
+  /** Soft delete: hidden from totals and stats, kept in storage. */
+  const archiveRun = (runId: string) =>
+    setState((s) => ({
+      ...s,
+      runs: s.runs.map((r) => (r.id === runId ? { ...r, archived: true } : r)),
+    }));
 
   const logTime = (gameId: string, seconds: number) =>
     setState((s) => {
@@ -162,7 +200,10 @@ export default function App() {
             onBack={() => setView({ name: 'home' })}
             onDeath={(runSeconds) => recordDeath(view.gameId, runSeconds)}
             onUndo={() => undoDeath(view.gameId)}
-            onAdvanceRun={() => advanceRun(view.gameId)}
+            onFinishRun={() => finishRun(view.gameId)}
+            onStartRun={(cycle) => startRun(view.gameId, cycle)}
+            onResetRun={() => resetRun(view.gameId)}
+            onArchiveRun={archiveRun}
             onLogTime={(seconds) => logTime(view.gameId, seconds)}
             onOpenStats={() => setView({ name: 'stats', gameId: view.gameId, from: 'counter' })}
           />
