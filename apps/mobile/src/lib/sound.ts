@@ -42,6 +42,80 @@ export function setMuted(muted: boolean): void {
   }
 }
 
+// --- reverb ----------------------------------------------------------------
+
+let impulse: AudioBuffer | null = null;
+
+/**
+ * Builds a cathedral-ish impulse response: exponentially decaying noise,
+ * lowpassed so the tail darkens as it fades the way a real stone space does.
+ *
+ * This is the piece every earlier version was missing. A dry oscillator has no
+ * space around it, and anything without space reads as a close-mic'd hit — a
+ * drum. Reverb is most of what makes a sting sound cinematic rather than
+ * synthetic, and it costs nothing to generate at runtime.
+ */
+function impulseResponse(c: AudioContext, seconds = 3.6, decay = 1.9): AudioBuffer {
+  const len = Math.max(1, Math.floor(c.sampleRate * seconds));
+  const buf = c.createBuffer(2, len, c.sampleRate);
+
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buf.getChannelData(ch);
+    // One-pole lowpass state, per channel. Slightly different coefficients so
+    // the two sides decorrelate and the tail sounds wide rather than centred.
+    let lp = 0;
+    const coeff = ch === 0 ? 0.20 : 0.24;
+    for (let i = 0; i < len; i++) {
+      const t = i / len;
+      const env = Math.pow(1 - t, decay);
+      const n = Math.random() * 2 - 1;
+      lp += (n - lp) * coeff;
+      data[i] = lp * env;
+    }
+  }
+  return buf;
+}
+
+let bus: GainNode | null = null;
+
+/**
+ * Shared wet/dry reverb send. Returns the node to feed audio into.
+ *
+ * Built once and reused: a convolver with a 3.6s impulse is not cheap, and
+ * this is a death counter — people tap it repeatedly. Creating one per tap
+ * would stack live convolutions on a phone CPU.
+ *
+ * Pre-delay keeps the onset clear of its own reflections, which is what makes
+ * a space read as large rather than just blurry.
+ */
+function reverbBus(c: AudioContext, wet: number): GainNode {
+  if (bus) return bus;
+
+  const input = c.createGain();
+
+  const dry = c.createGain();
+  dry.gain.value = 1 - wet;
+  input.connect(dry).connect(c.destination);
+
+  impulse ??= impulseResponse(c);
+  const convolver = c.createConvolver();
+  convolver.buffer = impulse;
+  // Energy-normalised, so the wet level is predictable regardless of how long
+  // the tail is. Overall loudness is set once at the source instead.
+  convolver.normalize = true;
+
+  const preDelay = c.createDelay(0.5);
+  preDelay.delayTime.value = 0.045;
+
+  const wetGain = c.createGain();
+  wetGain.gain.value = wet;
+
+  input.connect(preDelay).connect(convolver).connect(wetGain).connect(c.destination);
+
+  bus = input;
+  return bus;
+}
+
 /**
  * The death sound: a sustained dissonant drone — a horror sting, not a hit.
  *
@@ -63,14 +137,18 @@ export function playDeath(): void {
   if (!c) return;
 
   const t = c.currentTime;
-  const ATTACK = 0.22;
-  const HOLD = 0.75; // the plateau — this is what a drum can never have
-  const RELEASE = 1.5;
+  const ATTACK = 0.2;
+  const HOLD = 0.6; // the plateau — this is what a drum can never have
+  const RELEASE = 1.2;
   const END = ATTACK + HOLD + RELEASE;
 
+  // Heavily wet: the reverb tail is the point. The dry signal is just the
+  // thing that excites the space.
+  // Normalised convolution costs a lot of level, so the source is driven hard
+  // and the wet/dry split brings it back to a sensible output.
   const out = c.createGain();
-  out.gain.value = 0.5;
-  out.connect(c.destination);
+  out.gain.value = 2.6;
+  out.connect(reverbBus(c, 0.62));
 
   // Filter opens as it swells then closes as it dies, so the timbre moves
   // through the sound instead of just fading.
