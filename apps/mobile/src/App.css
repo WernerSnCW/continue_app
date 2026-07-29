@@ -326,32 +326,42 @@
    bottom so the tally and controls keep their contrast. */
 .cover-backdrop {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Locked to the artwork's own 3:4 ratio, so `cover` scales it without
+     cropping or stretching — filling the viewport would squash a portrait
+     cover and slice through the title. */
+  aspect-ratio: 3 / 4;
+  height: auto;
+  max-height: 68dvh;
   z-index: -2;
   background-size: cover;
-  background-position: center 22%;
-  filter: blur(16px) saturate(125%);
-  opacity: 0.62;
-  transform: scale(1.18);
+  background-position: center top;
+  /* No blur — the artwork should be recognisable. Held back with transparency
+     and a downward fade instead, so it reads as a backdrop rather than mush. */
+  filter: saturate(108%) contrast(96%);
+  opacity: 0.42;
+  transform: scale(1.02);
   pointer-events: none;
   -webkit-mask-image: linear-gradient(
     180deg,
     rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 0.7) 40%,
-    rgba(0, 0, 0, 0.25) 68%,
-    transparent 88%
+    rgba(0, 0, 0, 0.85) 45%,
+    rgba(0, 0, 0, 0.4) 72%,
+    transparent 100%
   );
   mask-image: linear-gradient(
     180deg,
     rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 0.7) 40%,
-    rgba(0, 0, 0, 0.25) 68%,
-    transparent 88%
+    rgba(0, 0, 0, 0.85) 45%,
+    rgba(0, 0, 0, 0.4) 72%,
+    transparent 100%
   );
 }
 
-/* Scrim so text stays legible however bright the cover is. Light at the top
-   where the art shows through, opaque lower down behind the tally. */
+/* Scrim: almost clear at the top so the cover shows, deepening toward the
+   bottom where the tally and controls need contrast. */
 .counter-screen::before {
   content: '';
   position: fixed;
@@ -359,9 +369,10 @@
   z-index: -1;
   background: linear-gradient(
     180deg,
-    rgba(11, 11, 14, 0.32) 0%,
-    rgba(11, 11, 14, 0.62) 45%,
-    rgba(11, 11, 14, 0.88) 100%
+    rgba(11, 11, 14, 0.12) 0%,
+    rgba(11, 11, 14, 0.34) 34%,
+    rgba(11, 11, 14, 0.72) 62%,
+    rgba(11, 11, 14, 0.92) 100%
   );
   pointer-events: none;
 }

@@ -42,43 +42,18 @@ export function setMuted(muted: boolean): void {
   }
 }
 
-/** Short burst of filtered white noise — the "impact" layer. */
-function noiseBurst(c: AudioContext, dest: AudioNode, duration: number, cutoff: number, gain: number) {
-  const frames = Math.floor(c.sampleRate * duration);
-  const buffer = c.createBuffer(1, frames, c.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < frames; i++) {
-    // Decaying noise: loud at the transient, gone almost immediately.
-    data[i] = (Math.random() * 2 - 1) * (1 - i / frames) ** 2;
-  }
-  const src = c.createBufferSource();
-  src.buffer = buffer;
-
-  const filter = c.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.value = cutoff;
-
-  const g = c.createGain();
-  g.gain.value = gain;
-
-  src.connect(filter).connect(g).connect(dest);
-  src.start();
-  src.stop(c.currentTime + duration);
-}
-
 /**
- * The death sound: a struck funeral bell.
+ * The death sound: a low, dissonant toll that swells and sinks.
  *
- * An earlier version layered a noise transient over a fast pitch-drop, which
- * read as a drum hit — percussive and generic. A bell is the right instrument
- * here: bells are *inharmonic*, meaning their partials aren't whole-number
- * multiples of the fundamental, which is exactly what makes them sound like
- * struck metal rather than a tuned note. The ratios below are close to a real
- * bell's hum/prime/tierce/quint/nominal, with the tierce a minor third so the
- * whole thing rings minor.
+ * Two earlier attempts read as a drum. The cause both times was the attack —
+ * a noise transient and a near-instant rise. Percussion is defined by that
+ * sharp onset, so no amount of tuning the tail fixes it. This version has no
+ * noise layer at all and swells over 90–160ms instead, which puts it in
+ * "something is looming" territory rather than "something was hit".
  *
- * Higher partials decay fastest, as they do on real metal — that's what gives
- * the long, hollow tail instead of a uniform fade.
+ * The pitch content is deliberately unstable: partials a minor second and a
+ * tritone above the root, a barely-detuned unison that beats slowly against
+ * itself, and everything sagging in pitch as it decays.
  */
 export function playDeath(): void {
   if (isMuted()) return;
@@ -90,44 +65,50 @@ export function playDeath(): void {
   out.gain.value = 0.85;
   out.connect(c.destination);
 
-  // Gentle high-cut so the strike never turns brittle on phone speakers.
+  // Filter closing from 1800Hz down to 600Hz — the sound darkens as it decays,
+  // like something receding. Static brightness is what made earlier versions
+  // sit there like a hit rather than a presence.
   const tone = c.createBiquadFilter();
   tone.type = 'lowpass';
-  tone.frequency.value = 5200;
-  tone.Q.value = 0.4;
+  tone.Q.value = 1.1;
+  tone.frequency.setValueAtTime(1800, t);
+  tone.frequency.exponentialRampToValueAtTime(600, t + 2.6);
   tone.connect(out);
 
-  const FUNDAMENTAL = 98; // low G — heavy without being muddy on a phone.
+  const ROOT = 65.41; // C2 — low and hollow.
 
-  // [ratio, level, decay seconds]
-  const PARTIALS: readonly (readonly [number, number, number])[] = [
-    [0.5, 0.30, 3.4], // hum tone — the weight underneath
-    [1.0, 0.26, 2.9], // prime
-    [1.19, 0.10, 2.2], // slight detune against the prime; produces slow beating
-    [2.4, 0.14, 1.7], // tierce (minor) — the mournful colour
-    [3.0, 0.09, 1.2], // quint
-    [4.2, 0.06, 0.8], // nominal — mostly gone by the time you notice it
-    [5.4, 0.035, 0.5], // strike shimmer
+  // [ratio, level, decay, attack]
+  // The 1.06 and 2.83 ratios are deliberately dissonant against the root: a
+  // minor second and a tritone. Consonant partials sound like a musical note;
+  // these sound wrong, which is the point.
+  const VOICES: readonly (readonly [number, number, number, number])[] = [
+    [0.5, 0.34, 4.2, 0.14], // sub drone — swells in underneath
+    [1.0, 0.30, 3.8, 0.09], // root
+    [1.006, 0.22, 3.6, 0.11], // barely detuned: slow beating, unsettled
+    [1.06, 0.09, 2.8, 0.16], // minor second — the dread interval
+    [2.0, 0.11, 2.4, 0.07],
+    [2.83, 0.07, 1.9, 0.12], // tritone
+    [4.05, 0.035, 1.2, 0.05],
   ];
 
-  for (const [ratio, level, decay] of PARTIALS) {
+  for (const [ratio, level, decay, attack] of VOICES) {
     const osc = c.createOscillator();
     const g = c.createGain();
     osc.type = 'sine';
-    osc.frequency.value = FUNDAMENTAL * ratio;
-    // Bells sag very slightly in pitch as they ring down.
-    osc.frequency.linearRampToValueAtTime(FUNDAMENTAL * ratio * 0.995, t + decay);
+    osc.frequency.setValueAtTime(ROOT * ratio, t);
+    // Sags downward as it rings out — sinking rather than settling.
+    osc.frequency.linearRampToValueAtTime(ROOT * ratio * 0.985, t + decay);
+    // Slow swell instead of an instant strike. A fast attack is the single
+    // thing that makes any of this read as percussion.
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(level, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(level, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
     osc.connect(g).connect(tone);
     osc.start(t);
     osc.stop(t + decay + 0.05);
   }
 
-  // A whisper of noise for the clapper contact — far quieter and shorter than
-  // before, so it reads as "metal struck" rather than "drum".
-  noiseBurst(c, tone, 0.05, 3400, 0.10);
+  // No noise transient at all — that was the drum.
 }
 
 /** Soft UI tick for ordinary taps. Deliberately quiet and short. */
