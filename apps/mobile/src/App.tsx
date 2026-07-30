@@ -95,14 +95,32 @@ export default function App() {
     setView({ name: 'counter', gameId: game.id });
   };
 
-  const startTracking = (result: IgdbSearchResult, cycle: number) => {
-    // Free tier is full: make the user choose what to archive rather than
-    // silently refusing or deleting anything.
-    if (!state.entitlement.unlimitedGames && usedSlots(state) >= FREE_TIER_GAME_LIMIT) {
+  /**
+   * Single entry point for "track this game", whether it's new, already
+   * tracked, or being picked back up after a swap.
+   *
+   * The slot check lives here rather than in each path: resuming an archived
+   * game un-archives it, which occupies a slot exactly like adding a new one.
+   * Routing that around this check let a free user hold four active games.
+   */
+  const startTracking = (result: IgdbSearchResult, cycle: number, archiveId?: string) => {
+    const existing = state.games.find((g) => g.igdbId === result.id);
+    const needsSlot = !existing || existing.archived;
+
+    if (
+      !archiveId &&
+      needsSlot &&
+      !state.entitlement.unlimitedGames &&
+      usedSlots(state) >= FREE_TIER_GAME_LIMIT
+    ) {
+      // Free tier is full: make the user choose what to archive rather than
+      // silently refusing or deleting anything.
       setView({ name: 'archive', pending: result, cycle });
       return;
     }
-    commitGame(result, cycle);
+
+    if (existing) startRunOnExisting(result.id, cycle, archiveId);
+    else commitGame(result, cycle, archiveId);
   };
 
   /**
@@ -118,7 +136,7 @@ export default function App() {
    * set aside as `swapped` — kept intact, restored by the unlock — and the
    * game starts from zero. The cost of rotating is continuity, not data.
    */
-  const startRunOnExisting = (igdbId: number, cycle: number) => {
+  const startRunOnExisting = (igdbId: number, cycle: number, archiveId?: string) => {
     const game = state.games.find((g) => g.igdbId === igdbId);
     if (!game) return;
 
@@ -139,7 +157,13 @@ export default function App() {
       const s = commitTimer(prev);
       return {
         ...s,
-        games: s.games.map((g) => (g.id === game.id ? { ...g, archived: false } : g)),
+        games: s.games.map((g) =>
+          g.id === game.id
+            ? { ...g, archived: false }
+            : g.id === archiveId
+              ? { ...g, archived: true }
+              : g,
+        ),
         runs: [
           ...s.runs.map((r) => {
             if (r.gameId !== game.id) return r;
@@ -352,7 +376,6 @@ export default function App() {
           <AddGameScreen
             onBack={() => setView({ name: 'home' })}
             onStart={startTracking}
-            onStartRunOnExisting={startRunOnExisting}
             existingIgdbIds={existingIgdbIds}
             unlimited={state.entitlement.unlimitedGames}
             historyFor={(igdbId) => historyForIgdbId(state, igdbId)}
@@ -382,7 +405,7 @@ export default function App() {
           <ArchivePickerScreen
             state={state}
             pendingName={view.pending.name}
-            onArchive={(gameId) => commitGame(view.pending, view.cycle, gameId)}
+            onArchive={(gameId) => startTracking(view.pending, view.cycle, gameId)}
             onCancel={() => setView({ name: 'add' })}
           />
         );
@@ -394,6 +417,7 @@ export default function App() {
             onAddGame={() => setView({ name: 'add' })}
             onOpenRanking={() => setView({ name: 'ranking' })}
             onOpenPaywall={() => setView({ name: 'paywall' })}
+            onRevertUnlock={() => setUnlocked(false)}
           />
         );
     }

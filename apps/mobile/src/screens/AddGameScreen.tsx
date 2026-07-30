@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { IgdbSearchResult } from '@continue/shared';
 import { FREE_TIER_GAME_LIMIT } from '@continue/shared';
 import { searchGames } from '../lib/igdb';
+import { runLabel as runLabelFor } from '../lib/store';
 
 /** Suggestions from the prototype — genre-appropriate starting points. */
 const SUGGESTED = ['Dark Souls III', 'Bloodborne', 'Lies of P', 'Nine Sols', 'Lords of the Fallen'];
@@ -9,8 +10,6 @@ const SUGGESTED = ['Dark Souls III', 'Bloodborne', 'Lies of P', 'Nine Sols', 'Lo
 interface Props {
   onBack: () => void;
   onStart: (result: IgdbSearchResult, cycle: number) => void;
-  /** Starts a fresh run on a game that's already tracked, rather than duplicating it. */
-  onStartRunOnExisting: (igdbId: number, cycle: number) => void;
   existingIgdbIds: ReadonlySet<number>;
   unlimited: boolean;
   /** What's already on file for a game, so we can say what starting fresh costs. */
@@ -26,7 +25,6 @@ interface Props {
 export function AddGameScreen({
   onBack,
   onStart,
-  onStartRunOnExisting,
   existingIgdbIds,
   unlimited,
   historyFor,
@@ -77,6 +75,10 @@ export function AddGameScreen({
     { cycle: 1, label: 'NG+', locked: false },
     { cycle: 2, label: 'NG++', locked: !unlimited },
   ];
+
+  // Someone may well install this mid-way through an NG+7 run. Unlocked users
+  // shouldn't have to climb there one cycle at a time.
+  const customActive = cycle > 2;
 
   return (
     <div className="screen">
@@ -192,25 +194,48 @@ export function AddGameScreen({
             {seg.locked ? ' 🔒' : ''}
           </button>
         ))}
+        {unlimited && (
+          <button
+            className={`seg${customActive ? ' active' : ''}`}
+            onClick={() => setCycle(customActive ? 3 : 3)}
+          >
+            NG+…
+          </button>
+        )}
       </div>
+
+      {unlimited && customActive && (
+        <div className="cycle-picker">
+          <span className="cp-label">Starting at</span>
+          <button
+            className="cp-step"
+            onClick={() => setCycle((c) => Math.max(3, c - 1))}
+            aria-label="Lower NG+ level"
+          >
+            −
+          </button>
+          <span className="cp-value">{runLabelFor(cycle)}</span>
+          <button
+            className="cp-step"
+            onClick={() => setCycle((c) => Math.min(99, c + 1))}
+            aria-label="Raise NG+ level"
+          >
+            +
+          </button>
+        </div>
+      )}
 
       <button
         className="primary-btn"
         disabled={!selected}
-        onClick={() => {
-          if (!selected) return;
-          // A tracked game keeps one entry with many runs — duplicating it
-          // would split its tally and its place in the ranking in two.
-          if (existingIgdbIds.has(selected.id)) onStartRunOnExisting(selected.id, cycle);
-          else onStart(selected, cycle);
-        }}
+        onClick={() => selected && onStart(selected, cycle)}
       >
         {!selected
           ? 'Start tracking'
           : historyFor(selected.id)?.archived && !unlimited
             ? `Start fresh on ${selected.name}`
             : existingIgdbIds.has(selected.id)
-              ? `Start a ${segments.find((s) => s.cycle === cycle)?.label} on ${selected.name}`
+              ? `Start ${runLabelFor(cycle)} on ${selected.name}`
               : `Start tracking ${selected.name}`}
       </button>
       <p className="ghost-note">

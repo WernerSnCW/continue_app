@@ -953,6 +953,56 @@
 
 .mock-flag { color: var(--gold); }
 
+.revert-link {
+  margin-top: auto;
+  align-self: center;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 7px 12px;
+}
+
+/* NG+ level stepper, for unlocked users starting mid-way up the ladder. */
+.cycle-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 18px;
+}
+.cp-label { font-size: 11px; color: var(--text-faint); margin-right: auto; }
+.cp-step {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  font-size: 15px;
+  line-height: 1;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.cp-value {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 4.2rem;
+  text-align: center;
+}
+.cp-go {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2a0c02;
+  background: linear-gradient(180deg, #ff7a52, var(--ember));
+  border-radius: 8px;
+  padding: 7px 12px;
+  margin-left: 4px;
+}
+
 /* --- global play time tracker bar -------------------------------------------- */
 
 /* The bar sits above the screen, so the screen must give back its height or

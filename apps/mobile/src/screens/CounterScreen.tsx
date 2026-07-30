@@ -62,6 +62,8 @@ export function CounterScreen({
   const [showPrompt, setShowPrompt] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirm, setConfirm] = useState<'reset' | 'discard' | null>(null);
+  const [customCycle, setCustomCycle] = useState(() => nextCycle(state, gameId));
+  const unlimited = state.entitlement.unlimitedGames;
 
   const committedSeconds = run?.playedSeconds ?? 0;
   const liveSeconds = run ? liveSecondsFor(state, run.id) : 0;
@@ -375,6 +377,42 @@ export function CounterScreen({
                     A brand new run from the beginning, counted separately.
                   </span>
                 </button>
+
+                {/* Unlocked users pick any cycle: someone may be starting to
+                    track a game they're already seven playthroughs into. */}
+                {unlimited && (
+                  <div className="sheet-row" role="group" aria-label="Start at a specific NG+ level">
+                    <span className="sr-name">Start at a specific level</span>
+                    <span className="sr-note">Jump straight to the cycle you're actually on.</span>
+                    <div className="cycle-picker" style={{ marginTop: 10 }}>
+                      <button
+                        className="cp-step"
+                        onClick={() => setCustomCycle((c) => Math.max(0, c - 1))}
+                        aria-label="Lower NG+ level"
+                      >
+                        −
+                      </button>
+                      <span className="cp-value">{runLabel(customCycle)}</span>
+                      <button
+                        className="cp-step"
+                        onClick={() => setCustomCycle((c) => Math.min(99, c + 1))}
+                        aria-label="Raise NG+ level"
+                      >
+                        +
+                      </button>
+                      <button
+                        className="cp-go"
+                        onClick={() => {
+                          playAdvance();
+                          onStartRun(customCycle);
+                          closeMenu();
+                        }}
+                      >
+                        Start
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <button className="sheet-row" onClick={() => setConfirm('reset')}>
                   <span className="sr-name">Reset this run</span>

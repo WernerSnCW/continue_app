@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Game } from '@continue/shared';
 import { FREE_TIER_GAME_LIMIT } from '@continue/shared';
+import { isMockBilling } from '../lib/billing';
 import { isMuted, playClick, setMuted } from '../lib/sound';
 import { BarsIcon, SkullIcon } from '../components/icons';
 import { Logo } from '../components/Logo';
@@ -21,6 +22,7 @@ interface Props {
   onAddGame: () => void;
   onOpenRanking: () => void;
   onOpenPaywall: () => void;
+  onRevertUnlock: () => void;
 }
 
 export function HomeScreen({
@@ -29,6 +31,7 @@ export function HomeScreen({
   onAddGame,
   onOpenRanking,
   onOpenPaywall,
+  onRevertUnlock,
 }: Props) {
   const [muted, setMutedState] = useState(isMuted());
   const games = visibleGames(state);
@@ -123,6 +126,15 @@ export function HomeScreen({
         >
           <p className="t1">Free plan: {FREE_TIER_GAME_LIMIT} games</p>
           <p className="t2">Unlock unlimited games + global average — $1.99 one-time</p>
+        </button>
+      )}
+
+      {/* Test builds only (VITE_MOCK_PURCHASE), so the unlocked and free
+          experiences can both be exercised on a real device. Compiled out of
+          any build headed for the store. */}
+      {unlimited && isMockBilling && (
+        <button className="revert-link" onClick={onRevertUnlock}>
+          Unlocked · test build — revert to free plan
         </button>
       )}
     </div>
