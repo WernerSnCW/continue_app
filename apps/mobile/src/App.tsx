@@ -16,6 +16,7 @@ import {
   archivedGames,
   commitTimer,
   deathsForRun,
+  enforceGameLimit,
   historyForIgdbId,
   latestRun,
   timedGame,
@@ -304,7 +305,11 @@ export default function App() {
 
 
   const setUnlocked = (unlocking: boolean) =>
-    setState((s) => {
+    setState((prev) => {
+      // Losing the unlock puts the slot limit back. The surplus is archived,
+      // never deleted, so it returns if they unlock again — otherwise buying,
+      // hoarding games and refunding would bypass the limit for good.
+      const s = unlocking ? prev : enforceGameLimit(prev, FREE_TIER_GAME_LIMIT);
       return {
         ...s,
         // Unlocking delivers the "restore archived history" promise: games

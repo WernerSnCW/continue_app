@@ -257,6 +257,54 @@ export function commitTimer(s: AppState): AppState {
   };
 }
 
+/**
+ * When a game was last actually touched — latest death, latest run start, or
+ * failing both, when it was added. Used to decide which games keep their slots
+ * when an unlock lapses.
+ */
+export function lastActiveAt(s: AppState, gameId: string): number {
+  const runs = s.runs.filter((r) => r.gameId === gameId);
+  const runIds = new Set(runs.map((r) => r.id));
+
+  let latest = 0;
+  const game = s.games.find((g) => g.id === gameId);
+  if (game) latest = Date.parse(game.addedAt) || 0;
+  for (const r of runs) latest = Math.max(latest, Date.parse(r.startedAt) || 0);
+  for (const d of s.deaths) {
+    if (runIds.has(d.runId)) latest = Math.max(latest, Date.parse(d.diedAt) || 0);
+  }
+  return latest;
+}
+
+/**
+ * Enforces the free-tier limit after an unlock lapses, by archiving the least
+ * recently played games until only `limit` remain active.
+ *
+ * Nothing is deleted — the surplus is archived exactly as a swap would archive
+ * it, so it comes back if they unlock again, and they can swap which games are
+ * live in the meantime. Without this, buying the unlock, adding a pile of
+ * games and then refunding would leave the limit permanently bypassed.
+ */
+export function enforceGameLimit(s: AppState, limit: number): AppState {
+  const active = activeGames(s);
+  if (active.length <= limit) return s;
+
+  const keep = new Set(
+    [...active]
+      .sort((a, b) => lastActiveAt(s, b.id) - lastActiveAt(s, a.id))
+      .slice(0, limit)
+      .map((g) => g.id),
+  );
+
+  // A clock running on a game about to be archived has to be banked first.
+  const base = s.timer && !keep.has(s.timer.gameId) ? commitTimer(s) : s;
+
+  return {
+    ...base,
+    games: base.games.map((g) => (!g.archived && !keep.has(g.id) ? { ...g, archived: true } : g)),
+  };
+}
+
 /** The game whose clock is running, if any. */
 export const timedGame = (s: AppState): Game | undefined =>
   s.timer ? s.games.find((g) => g.id === s.timer!.gameId) : undefined;
