@@ -47,6 +47,9 @@ function migrate(raw: AppState): AppState {
       ...r,
       playedSeconds: r.playedSeconds ?? 0,
       archived: r.archived ?? false,
+      // Anything archived before this field existed was user-discarded; the
+      // automatic swap path didn't exist yet.
+      archivedReason: r.archivedReason ?? (r.archived ? 'discarded' : null),
     })),
     deaths: (raw.deaths ?? []).map((d) => ({ ...d, runSeconds: d.runSeconds ?? null })),
     timer: raw.timer ?? null,
@@ -96,6 +99,7 @@ export function newRun(gameId: string, cycle: number): Run {
     completedAt: null,
     playedSeconds: 0,
     archived: false,
+    archivedReason: null,
   };
 }
 
@@ -126,11 +130,14 @@ export const activeGames = (s: AppState): Game[] => s.games.filter((g) => !g.arc
 export const archivedGames = (s: AppState): Game[] => s.games.filter((g) => g.archived);
 
 /**
- * Games shown on the home screen. Archived games come back only once the
- * unlock is owned — that's the "restore archived history" promise.
+ * Games shown on the home screen: never the archived ones, paid or not.
+ *
+ * Unlocking restores archived games by actually un-archiving them (see the
+ * entitlement action), rather than by showing archived ones. Otherwise "stop
+ * tracking this game" would do nothing visible for a paid user, since the
+ * game would simply stay on the home screen.
  */
-export const visibleGames = (s: AppState): Game[] =>
-  s.entitlement.unlimitedGames ? s.games : activeGames(s);
+export const visibleGames = (s: AppState): Game[] => activeGames(s);
 
 /** Only unarchived games consume a free-tier slot. */
 export const usedSlots = (s: AppState): number => activeGames(s).length;
@@ -143,6 +150,41 @@ export const runsForGame = (s: AppState, gameId: string): Run[] =>
 
 export const archivedRunsForGame = (s: AppState, gameId: string): Run[] =>
   s.runs.filter((r) => r.gameId === gameId && r.archived);
+
+export const runsArchivedBecause = (
+  s: AppState,
+  gameId: string,
+  reason: 'discarded' | 'swapped',
+): Run[] => archivedRunsForGame(s, gameId).filter((r) => r.archivedReason === reason);
+
+/**
+ * What a game holds in total, counted or not — used to tell someone re-adding
+ * a swapped-out game exactly what's sitting behind the unlock.
+ */
+export function historyForIgdbId(
+  s: AppState,
+  igdbId: number,
+): { archived: boolean; runs: number; deaths: number; lockedRuns: number; lockedDeaths: number } | null {
+  const game = s.games.find((g) => g.igdbId === igdbId);
+  if (!game) return null;
+
+  const all = s.runs.filter((r) => r.gameId === game.id);
+  const countDeaths = (runs: Run[]) => {
+    const ids = new Set(runs.map((r) => r.id));
+    return s.deaths.reduce((n, d) => (ids.has(d.runId) ? n + 1 : n), 0);
+  };
+  // What would be set aside if they start fresh: everything still live, plus
+  // anything already swapped out on a previous round-trip.
+  const locked = all.filter((r) => !r.archived || r.archivedReason === 'swapped');
+
+  return {
+    archived: game.archived,
+    runs: all.length,
+    deaths: countDeaths(all),
+    lockedRuns: locked.length,
+    lockedDeaths: countDeaths(locked),
+  };
+}
 
 /**
  * The run deaths are recorded against — strictly one that is unfinished and

@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { HelpTip } from '../components/HelpTip';
 import { formatHours } from '../lib/ranking';
 import {
-  archivedRunsForGame,
+  runsArchivedBecause,
   deathsForGame,
   deathsForRun,
   deathsToday,
@@ -15,12 +16,23 @@ interface Props {
   state: AppState;
   gameId: string;
   onBack: () => void;
+  onArchiveGame: (gameId: string) => void;
+  onRestoreGame: (gameId: string) => void;
+  onRestoreDiscarded: (gameId: string) => void;
 }
 
 const rateOf = (deaths: number, seconds: number): number | null =>
   seconds > 0 ? deaths / (seconds / 3600) : null;
 
-export function GameStatsScreen({ state, gameId, onBack }: Props) {
+export function GameStatsScreen({
+  state,
+  gameId,
+  onBack,
+  onArchiveGame,
+  onRestoreGame,
+  onRestoreDiscarded,
+}: Props) {
+  const [confirmStop, setConfirmStop] = useState(false);
   const game = state.games.find((g) => g.id === gameId);
   const runs = runsForGame(state, gameId);
   if (!game) return null;
@@ -201,19 +213,74 @@ export function GameStatsScreen({ state, gameId, onBack }: Props) {
         </div>
       )}
 
-      {archivedRunsForGame(state, gameId).length > 0 && (
-        <p className="archived-runs-note">
-          {archivedRunsForGame(state, gameId).length} discarded run
-          {archivedRunsForGame(state, gameId).length === 1 ? '' : 's'} not counted above —{' '}
-          {archivedRunsForGame(state, gameId).reduce((n, r) => n + deathsForRun(state, r.id), 0)}{' '}
-          deaths kept in storage.
-        </p>
-      )}
+      {(() => {
+        const unlimited = state.entitlement.unlimitedGames;
+        const discarded = runsArchivedBecause(state, gameId, 'discarded');
+        const swapped = runsArchivedBecause(state, gameId, 'swapped');
+        const countDeaths = (rs: typeof discarded) =>
+          rs.reduce((n, r) => n + deathsForRun(state, r.id), 0);
+        if (!discarded.length && !swapped.length) return null;
+
+        return (
+          <div className="archived-block">
+            {swapped.length > 0 && (
+              <p className="archived-runs-note">
+                <strong>{countDeaths(swapped)} deaths</strong> across {swapped.length} run
+                {swapped.length === 1 ? '' : 's'} are archived from before you swapped this game
+                out.{' '}
+                {unlimited
+                  ? 'Unlocked — restore them any time.'
+                  : 'They return when you unlock unlimited games.'}
+                {unlimited && (
+                  <button className="inline-link" onClick={() => onRestoreGame(gameId)}>
+                    Restore now
+                  </button>
+                )}
+              </p>
+            )}
+            {discarded.length > 0 && (
+              <p className="archived-runs-note">
+                {discarded.length} discarded run{discarded.length === 1 ? '' : 's'} not counted
+                above — {countDeaths(discarded)} deaths kept in storage.
+                <button className="inline-link" onClick={() => onRestoreDiscarded(gameId)}>
+                  Restore
+                </button>
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       <p className="ghost-note" style={{ marginTop: 'auto' }}>
         Bars show each run's share of your total deaths. Dots below mark when each death happened
         across the run's logged time.
       </p>
+
+      {/* Game-level lifecycle. Archiving is soft, like everything else here. */}
+      {game.archived ? (
+        <button className="text-btn wide" onClick={() => onRestoreGame(gameId)}>
+          Resume tracking {game.name}
+        </button>
+      ) : confirmStop ? (
+        <div className="sheet-confirm" style={{ marginTop: 8 }}>
+          <p>
+            Stop tracking {game.name}? It leaves your home screen and frees a slot. Every run and
+            death is kept, and you can resume it later.
+          </p>
+          <div className="sheet-confirm-actions">
+            <button className="tp-ghost" onClick={() => setConfirmStop(false)}>
+              Cancel
+            </button>
+            <button className="tp-primary" onClick={() => onArchiveGame(gameId)}>
+              Stop tracking
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="text-btn wide danger" onClick={() => setConfirmStop(true)}>
+          Stop tracking this game
+        </button>
+      )}
     </div>
   );
 }

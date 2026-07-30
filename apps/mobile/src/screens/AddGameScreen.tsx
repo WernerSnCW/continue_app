@@ -13,6 +13,14 @@ interface Props {
   onStartRunOnExisting: (igdbId: number, cycle: number) => void;
   existingIgdbIds: ReadonlySet<number>;
   unlimited: boolean;
+  /** What's already on file for a game, so we can say what starting fresh costs. */
+  historyFor: (igdbId: number) => {
+    archived: boolean;
+    runs: number;
+    deaths: number;
+    lockedRuns: number;
+    lockedDeaths: number;
+  } | null;
 }
 
 export function AddGameScreen({
@@ -21,6 +29,7 @@ export function AddGameScreen({
   onStartRunOnExisting,
   existingIgdbIds,
   unlimited,
+  historyFor,
 }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<IgdbSearchResult[]>([]);
@@ -144,6 +153,32 @@ export function AddGameScreen({
 
       <div className="spacer" />
 
+      {/* Picking up a swapped-out game: say plainly what happens to the old
+          numbers, rather than silently handing them back or silently binning
+          them. */}
+      {selected &&
+        (() => {
+          const h = historyFor(selected.id);
+          if (!h?.archived || h.lockedDeaths === 0) return null;
+          return (
+            <div className="history-notice">
+              <div className="hn-title">You tracked this before</div>
+              <p className="hn-body">
+                <strong>{h.lockedDeaths} deaths</strong> across {h.lockedRuns} run
+                {h.lockedRuns === 1 ? '' : 's'} {unlimited ? 'are archived.' : 'are archived.'}{' '}
+                {unlimited ? (
+                  <>Starting again restores them — your tally picks up where it left off.</>
+                ) : (
+                  <>
+                    Starting again begins from zero. They stay safe and come back if you unlock —
+                    nothing is deleted.
+                  </>
+                )}
+              </p>
+            </div>
+          );
+        })()}
+
       <div className="field-label">This run</div>
       <div className="segmented">
         {segments.map((seg) => (
@@ -172,12 +207,16 @@ export function AddGameScreen({
       >
         {!selected
           ? 'Start tracking'
-          : existingIgdbIds.has(selected.id)
-            ? `Start a ${segments.find((s) => s.cycle === cycle)?.label} on ${selected.name}`
-            : `Start tracking ${selected.name}`}
+          : historyFor(selected.id)?.archived && !unlimited
+            ? `Start fresh on ${selected.name}`
+            : existingIgdbIds.has(selected.id)
+              ? `Start a ${segments.find((s) => s.cycle === cycle)?.label} on ${selected.name}`
+              : `Start tracking ${selected.name}`}
       </button>
       <p className="ghost-note">
-        {selected && existingIgdbIds.has(selected.id) ? (
+        {selected && historyFor(selected.id)?.archived ? (
+          <>Free plan: {FREE_TIER_GAME_LIMIT} games at a time.</>
+        ) : selected && existingIgdbIds.has(selected.id) ? (
           <>
             You're already tracking {selected.name}. Runs live inside a game, so this starts a new
             one and keeps every previous run's tally intact.

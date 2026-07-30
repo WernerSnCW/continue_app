@@ -15,6 +15,7 @@ import {
   archivedGames,
   commitTimer,
   deathsForRun,
+  historyForIgdbId,
   latestRun,
   timedGame,
   emptyState,
@@ -103,35 +104,86 @@ export default function App() {
   };
 
   /**
-   * Starts a fresh run on a game that's already tracked. The alternative —
-   * letting the same game be added twice — would split its deaths across two
-   * ids, breaking its stats, its ranking position, and (later) its match
-   * against the global average.
+   * Starts a run on a game that's already in the library. Never duplicates the
+   * game — two entries for one title would split its deaths across two ids,
+   * breaking its stats, its ranking position and its future match against the
+   * global average.
+   *
+   * Picking a *swapped-out* game back up on the free tier deliberately does
+   * NOT hand its history back. Otherwise three slots quietly become unlimited:
+   * rotate games at will and every tally survives, which makes both "unlimited
+   * games" and "restore archived history" worthless. Instead the old runs are
+   * set aside as `swapped` — kept intact, restored by the unlock — and the
+   * game starts from zero. The cost of rotating is continuity, not data.
    */
   const startRunOnExisting = (igdbId: number, cycle: number) => {
     const game = state.games.find((g) => g.igdbId === igdbId);
     if (!game) return;
+
+    const unlimited = state.entitlement.unlimitedGames;
+    const resumingSwapped = game.archived && !unlimited;
     const current = activeRun(state, game.id);
 
     // An untouched run at the same cycle is already what they asked for.
-    if (current && current.cycle === cycle && deathsForRun(state, current.id) === 0) {
+    if (!resumingSwapped && current && current.cycle === cycle && deathsForRun(state, current.id) === 0) {
       setView({ name: 'counter', gameId: game.id });
       return;
     }
 
     const run = newRun(game.id, cycle);
     const completedAt = new Date().toISOString();
-    setState((s) => ({
-      ...s,
-      // Un-archive it too: they've just asked to play it again.
-      games: s.games.map((g) => (g.id === game.id ? { ...g, archived: false } : g)),
-      runs: [
-        ...s.runs.map((r) => (r.id === current?.id ? { ...r, completedAt } : r)),
-        run,
-      ],
-    }));
+
+    setState((prev) => {
+      const s = commitTimer(prev);
+      return {
+        ...s,
+        games: s.games.map((g) => (g.id === game.id ? { ...g, archived: false } : g)),
+        runs: [
+          ...s.runs.map((r) => {
+            if (r.gameId !== game.id) return r;
+            if (resumingSwapped && !r.archived) {
+              return { ...r, archived: true, archivedReason: 'swapped' as const };
+            }
+            return r.id === current?.id ? { ...r, completedAt } : r;
+          }),
+          run,
+        ],
+      };
+    });
     setView({ name: 'counter', gameId: game.id });
   };
+
+  /** Stop tracking a game. Soft: it leaves the home screen, data survives. */
+  const archiveGame = (gameId: string) => {
+    setState((prev) => {
+      const s = commitTimer(prev);
+      return { ...s, games: s.games.map((g) => (g.id === gameId ? { ...g, archived: true } : g)) };
+    });
+    setView({ name: 'home' });
+  };
+
+  /** Bring an archived game back, along with any swap-archived runs. */
+  const restoreGame = (gameId: string) =>
+    setState((s) => ({
+      ...s,
+      games: s.games.map((g) => (g.id === gameId ? { ...g, archived: false } : g)),
+      runs: s.runs.map((r) =>
+        r.gameId === gameId && r.archivedReason === 'swapped'
+          ? { ...r, archived: false, archivedReason: null }
+          : r,
+      ),
+    }));
+
+  /** Un-discard runs the user threw away by hand. */
+  const restoreDiscardedRuns = (gameId: string) =>
+    setState((s) => ({
+      ...s,
+      runs: s.runs.map((r) =>
+        r.gameId === gameId && r.archivedReason === 'discarded'
+          ? { ...r, archived: false, archivedReason: null }
+          : r,
+      ),
+    }));
 
   const recordDeath = (gameId: string, runSeconds: number | null) =>
     setState((s) => {
@@ -192,7 +244,9 @@ export default function App() {
       return {
         ...s,
         runs: [
-          ...s.runs.map((r) => (r.id === run.id ? { ...r, archived: true } : r)),
+          ...s.runs.map((r) =>
+            r.id === run.id ? { ...r, archived: true, archivedReason: 'discarded' as const } : r,
+          ),
           newRun(gameId, run.cycle),
         ],
       };
@@ -202,7 +256,12 @@ export default function App() {
   const archiveRun = (runId: string) =>
     setState((prev) => {
       const s = commitTimer(prev);
-      return { ...s, runs: s.runs.map((r) => (r.id === runId ? { ...r, archived: true } : r)) };
+      return {
+        ...s,
+        runs: s.runs.map((r) =>
+          r.id === runId ? { ...r, archived: true, archivedReason: 'discarded' as const } : r,
+        ),
+      };
     });
 
   /** Start the clock on a run. Only one can run at a time, app-wide. */
@@ -219,12 +278,24 @@ export default function App() {
 
 
   const toggleUnlimited = () =>
-    setState((s) => ({
-      ...s,
-      entitlement: s.entitlement.unlimitedGames
-        ? { unlimitedGames: false, purchasedAt: null }
-        : { unlimitedGames: true, purchasedAt: new Date().toISOString() },
-    }));
+    setState((s) => {
+      const unlocking = !s.entitlement.unlimitedGames;
+      return {
+        ...s,
+        // Unlocking delivers the "restore archived history" promise: games
+        // swapped out come back, and so do the runs set aside by a swap. Runs
+        // the user discarded on purpose don't — they asked for those to go.
+        games: unlocking ? s.games.map((g) => ({ ...g, archived: false })) : s.games,
+        runs: unlocking
+          ? s.runs.map((r) =>
+              r.archivedReason === 'swapped' ? { ...r, archived: false, archivedReason: null } : r,
+            )
+          : s.runs,
+        entitlement: unlocking
+          ? { unlimitedGames: true, purchasedAt: new Date().toISOString() }
+          : { unlimitedGames: false, purchasedAt: null },
+      };
+    });
 
   const screen = () => {
     switch (view.name) {
@@ -257,6 +328,9 @@ export default function App() {
                   : { name: 'counter', gameId: view.gameId },
               )
             }
+            onArchiveGame={archiveGame}
+            onRestoreGame={restoreGame}
+            onRestoreDiscarded={restoreDiscardedRuns}
           />
         );
       case 'add':
@@ -267,6 +341,7 @@ export default function App() {
             onStartRunOnExisting={startRunOnExisting}
             existingIgdbIds={existingIgdbIds}
             unlimited={state.entitlement.unlimitedGames}
+            historyFor={(igdbId) => historyForIgdbId(state, igdbId)}
           />
         );
       case 'ranking':

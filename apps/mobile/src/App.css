@@ -1012,14 +1012,51 @@ body:has(.timer-bar) .screen {
 .rd-actions { display: flex; flex-direction: column; gap: 8px; }
 .text-btn.wide { width: 100%; }
 
-.archived-runs-note {
-  font-size: 10.5px;
-  line-height: 1.5;
-  color: var(--text-faint);
+.archived-block {
   border-top: 1px dashed var(--line);
   padding-top: 10px;
-  margin: 4px 0 0;
+  margin-top: 4px;
 }
+.archived-runs-note {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+  margin: 0 0 8px;
+}
+.archived-runs-note strong { color: var(--text-dim); }
+
+.inline-link {
+  font-size: 10.5px;
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  margin-left: 5px;
+}
+
+.text-btn.danger { color: var(--ember); border-color: rgba(255, 90, 54, 0.35); }
+
+/* Explains what happens to an old tally when a swapped-out game is resumed. */
+.history-notice {
+  background: linear-gradient(160deg, var(--card-2), var(--card));
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.hn-title {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 5px;
+}
+.hn-body {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
+}
+.hn-body strong { color: var(--text); }
 
 /* --- run options sheet ------------------------------------------------------ */
 

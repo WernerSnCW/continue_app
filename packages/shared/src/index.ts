@@ -14,6 +14,8 @@ export const FREE_TIER_GAME_LIMIT = 3;
 /** A run through a game. NG+ cycles beyond the second are tracked by `cycle`. */
 export type RunType = 'ng' | 'ng+' | 'ng++';
 
+export type RunArchiveReason = 'discarded' | 'swapped';
+
 export interface Game {
   id: string;
   /** IGDB game id, if the game was matched from IGDB rather than added by hand. */
@@ -52,6 +54,15 @@ export interface Run {
    * nothing is ever really deleted.
    */
   archived: boolean;
+  /**
+   * Why the run was archived, which decides whether unlocking brings it back.
+   *
+   * - `discarded`: the user threw it away on purpose. Stays gone.
+   * - `swapped`: set aside automatically when a previously swapped-out game
+   *   was picked up again on the free tier. Restored by the unlock — this is
+   *   the "restore archived history" promise.
+   */
+  archivedReason: RunArchiveReason | null;
   /**
    * Accumulated play time in seconds, from the counter screen's session timer.
    * Only time the user actually clocked in counts — the difficulty ranking
