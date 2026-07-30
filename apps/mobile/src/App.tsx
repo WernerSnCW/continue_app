@@ -7,6 +7,7 @@ import { ArchivePickerScreen } from './screens/ArchivePickerScreen';
 import { CounterScreen } from './screens/CounterScreen';
 import { GameStatsScreen } from './screens/GameStatsScreen';
 import { HomeScreen } from './screens/HomeScreen';
+import { PaywallScreen } from './screens/PaywallScreen';
 import { RankingScreen } from './screens/RankingScreen';
 import { TimerBar } from './components/TimerBar';
 import { cancelTrackerReminder, scheduleTrackerReminder } from './lib/notify';
@@ -34,6 +35,7 @@ type View =
   | { name: 'counter'; gameId: string }
   | { name: 'add' }
   | { name: 'ranking' }
+  | { name: 'paywall' }
   /** `from` so Back returns where you came from, not always the counter. */
   | { name: 'stats'; gameId: string; from: 'counter' | 'ranking' }
   | { name: 'archive'; pending: IgdbSearchResult; cycle: number };
@@ -277,9 +279,8 @@ export default function App() {
   const stopTimer = () => setState(commitTimer);
 
 
-  const toggleUnlimited = () =>
+  const setUnlocked = (unlocking: boolean) =>
     setState((s) => {
-      const unlocking = !s.entitlement.unlimitedGames;
       return {
         ...s,
         // Unlocking delivers the "restore archived history" promise: games
@@ -296,6 +297,19 @@ export default function App() {
           : { unlimitedGames: false, purchasedAt: null },
       };
     });
+
+  const toggleUnlimited = () => setUnlocked(!state.entitlement.unlimitedGames);
+
+  /** Everything the unlock would hand back right now, for the paywall copy. */
+  const lockedBehindUnlock = useMemo(() => {
+    const swapped = state.runs.filter((r) => r.archivedReason === 'swapped');
+    const ids = new Set(swapped.map((r) => r.id));
+    return {
+      games: state.games.filter((g) => g.archived).length,
+      runs: swapped.length,
+      deaths: state.deaths.reduce((n, d) => (ids.has(d.runId) ? n + 1 : n), 0),
+    };
+  }, [state]);
 
   const screen = () => {
     switch (view.name) {
@@ -344,6 +358,17 @@ export default function App() {
             historyFor={(igdbId) => historyForIgdbId(state, igdbId)}
           />
         );
+      case 'paywall':
+        return (
+          <PaywallScreen
+            onBack={() => setView({ name: 'home' })}
+            onUnlocked={() => {
+              setUnlocked(true);
+              setView({ name: 'home' });
+            }}
+            locked={lockedBehindUnlock}
+          />
+        );
       case 'ranking':
         return (
           <RankingScreen
@@ -368,6 +393,7 @@ export default function App() {
             onOpenGame={(gameId) => setView({ name: 'counter', gameId })}
             onAddGame={() => setView({ name: 'add' })}
             onOpenRanking={() => setView({ name: 'ranking' })}
+            onOpenPaywall={() => setView({ name: 'paywall' })}
           />
         );
     }

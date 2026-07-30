@@ -902,6 +902,57 @@
   margin-top: 6px;
 }
 
+/* --- paywall ------------------------------------------------------------------ */
+
+.paywall-head { text-align: center; margin: 6px 0 20px; }
+.paywall-head h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 10px 0 4px;
+}
+.paywall-head p { font-size: 11.5px; color: var(--text-dim); margin: 0; }
+.crown-wrap { display: flex; justify-content: center; margin-bottom: 6px; }
+.crown-wrap .icon-crown { width: 34px; height: 26px; }
+
+.feature-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.feature-row .dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(142, 227, 107, 0.15);
+  border: 1px solid var(--toxic);
+  flex-shrink: 0;
+  margin-top: 1px;
+  position: relative;
+}
+.feature-row .dot::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 3px;
+  width: 6px;
+  height: 9px;
+  border-right: 2px solid var(--toxic);
+  border-bottom: 2px solid var(--toxic);
+  transform: rotate(40deg);
+}
+.feature-row .t { font-size: 12.5px; color: var(--text); margin: 0 0 2px; font-weight: 600; }
+.feature-row .s { font-size: 10.5px; color: var(--text-faint); margin: 0; line-height: 1.4; }
+
+.price-box {
+  background: linear-gradient(160deg, var(--card-2), var(--card));
+  border: 1px solid var(--gold);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+  margin: 10px 0 16px;
+}
+.price-box .p { font-family: 'Cinzel', serif; font-size: 28px; font-weight: 700; color: var(--gold); }
+.price-box .s { font-size: 10.5px; color: var(--text-dim); }
+
+.mock-flag { color: var(--gold); }
+
 /* --- global play time tracker bar -------------------------------------------- */
 
 /* The bar sits above the screen, so the screen must give back its height or

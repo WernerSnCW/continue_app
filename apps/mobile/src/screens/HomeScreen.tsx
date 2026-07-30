@@ -20,9 +20,16 @@ interface Props {
   onOpenGame: (gameId: string) => void;
   onAddGame: () => void;
   onOpenRanking: () => void;
+  onOpenPaywall: () => void;
 }
 
-export function HomeScreen({ state, onOpenGame, onAddGame, onOpenRanking }: Props) {
+export function HomeScreen({
+  state,
+  onOpenGame,
+  onAddGame,
+  onOpenRanking,
+  onOpenPaywall,
+}: Props) {
   const [muted, setMutedState] = useState(isMuted());
   const games = visibleGames(state);
   const unlimited = state.entitlement.unlimitedGames;
@@ -107,10 +114,16 @@ export function HomeScreen({ state, onOpenGame, onAddGame, onOpenRanking }: Prop
       )}
 
       {!unlimited && (
-        <div className="upsell-bar">
+        <button
+          className="upsell-bar"
+          onClick={() => {
+            playClick();
+            onOpenPaywall();
+          }}
+        >
           <p className="t1">Free plan: {FREE_TIER_GAME_LIMIT} games</p>
           <p className="t2">Unlock unlimited games + global average — $1.99 one-time</p>
-        </div>
+        </button>
       )}
     </div>
   );
