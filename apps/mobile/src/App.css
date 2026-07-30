@@ -959,11 +959,16 @@
    every page gains a pointless 46px of scroll. Declared on :root because
    .screen is the bar's sibling and wouldn't inherit it otherwise. */
 :root {
-  --timer-bar-h: 46px;
+  /* Bar content plus its padding, plus whatever the status bar takes. Used to
+     give the screen below its height back so no page gains stray scroll. */
+  --timer-bar-h: calc(58px + env(safe-area-inset-top, 0px));
 }
 
 body:has(.timer-bar) .screen {
   min-height: calc(100dvh - var(--timer-bar-h));
+  /* The bar has already cleared the status bar. env() is viewport-level, not
+     element-level, so without this the screen would pay the inset twice. */
+  padding-top: 14px;
 }
 
 .timer-bar {
@@ -975,7 +980,11 @@ body:has(.timer-bar) .screen {
   gap: 6px;
   max-width: 30rem;
   margin: 0 auto;
-  padding: 6px 10px calc(6px + env(safe-area-inset-top));
+  /* Android 15+ draws the webview edge to edge, so the bar sits underneath the
+     clock and battery icons unless it clears the inset itself. The extra 14px
+     is deliberate breathing room on top of that — flush against the status
+     bar is legible in a screenshot and not on a real phone. */
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 10px 10px;
   background: linear-gradient(180deg, rgba(19, 26, 17, 0.98), rgba(11, 11, 14, 0.96));
   border-bottom: 1px solid rgba(142, 227, 107, 0.4);
   backdrop-filter: blur(8px);
