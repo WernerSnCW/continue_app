@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Game } from '@continue/shared';
 import { FREE_TIER_GAME_LIMIT } from '@continue/shared';
+import { isBackupConfigured } from '../lib/backup';
 import { isMockBilling } from '../lib/billing';
 import { isMuted, playClick, setMuted } from '../lib/sound';
 import { BarsIcon, SkullIcon } from '../components/icons';
@@ -23,6 +24,18 @@ interface Props {
   onOpenRanking: () => void;
   onOpenPaywall: () => void;
   onRevertUnlock: () => void;
+  backup: { state: string; lastSavedAt: number | null };
+}
+
+function backupLabel(state: string, lastSavedAt: number | null): string {
+  if (state === 'saving') return 'Backing up…';
+  if (state === 'offline') return 'Offline — will back up later';
+  if (state === 'error') return 'Backup failed — will retry';
+  if (!lastSavedAt) return 'Backup pending';
+  const mins = Math.floor((Date.now() - lastSavedAt) / 60000);
+  if (mins < 1) return 'Backed up just now';
+  if (mins < 60) return `Backed up ${mins}m ago`;
+  return `Backed up ${Math.floor(mins / 60)}h ago`;
 }
 
 export function HomeScreen({
@@ -32,6 +45,7 @@ export function HomeScreen({
   onOpenRanking,
   onOpenPaywall,
   onRevertUnlock,
+  backup,
 }: Props) {
   const [muted, setMutedState] = useState(isMuted());
   const games = visibleGames(state);
@@ -114,6 +128,12 @@ export function HomeScreen({
         <button className="primary-btn" onClick={onAddGame}>
           Add your first game
         </button>
+      )}
+
+      {isBackupConfigured && games.length > 0 && (
+        <p className={`backup-line${backup.state === 'saving' ? ' is-saving' : ''}`}>
+          {backupLabel(backup.state, backup.lastSavedAt)}
+        </p>
       )}
 
       {!unlimited && (

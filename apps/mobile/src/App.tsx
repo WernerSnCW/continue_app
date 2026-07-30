@@ -11,6 +11,7 @@ import { PaywallScreen } from './screens/PaywallScreen';
 import { RankingScreen } from './screens/RankingScreen';
 import { TimerBar } from './components/TimerBar';
 import { cancelTrackerReminder, scheduleTrackerReminder } from './lib/notify';
+import { useBackup } from './lib/useBackup';
 import {
   activeRun,
   archivedGames,
@@ -49,6 +50,7 @@ export default function App() {
     save(state);
   }, [state]);
 
+  const backup = useBackup(state);
   const timedFor = timedGame(state);
 
   /**
@@ -423,6 +425,7 @@ export default function App() {
             onOpenRanking={() => setView({ name: 'ranking' })}
             onOpenPaywall={() => setView({ name: 'paywall' })}
             onRevertUnlock={() => setUnlocked(false)}
+            backup={backup}
           />
         );
     }
