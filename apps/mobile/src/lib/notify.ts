@@ -41,8 +41,10 @@ export async function scheduleTrackerReminder(gameName: string): Promise<void> {
       notifications: [
         {
           id: NOTIFICATION_ID,
-          title: 'Play time tracker still running',
-          body: `Still counting your time on ${gameName}. Pause it if you've stopped playing.`,
+          // App name in the title as well as the body: on a crowded lock
+          // screen the icon alone isn't enough to say who's asking.
+          title: 'Continue? — play time tracker running',
+          body: `Continue? is still counting your time on ${gameName}. Pause it if you've stopped playing.`,
           schedule: { at: new Date(Date.now() + REMINDER_AFTER_MINUTES * 60_000) },
           smallIcon: 'ic_launcher',
         },
