@@ -954,13 +954,56 @@
 .mock-flag { color: var(--gold); }
 
 .backup-line {
+  display: block;
+  width: 100%;
   text-align: center;
   font-size: 10px;
   letter-spacing: 0.4px;
   color: var(--text-faint);
   margin: 2px 0 0;
+  padding: 6px 0;
 }
 .backup-line.is-saving { color: var(--toxic); }
+
+/* --- backup screen ---------------------------------------------------------- */
+
+.backup-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.backup-card.ok { border-color: rgba(142, 227, 107, 0.5); }
+.backup-card.warn { border-color: var(--gold); }
+.bc-label {
+  font-size: 9.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+.backup-card.ok .bc-label { color: var(--toxic); }
+.backup-card.warn .bc-label { color: var(--gold); }
+.bc-value {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bc-note {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 6px 0 0;
+}
+
+.code-input {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  letter-spacing: 8px;
+  text-align: center;
+}
 
 .revert-link {
   margin-top: auto;

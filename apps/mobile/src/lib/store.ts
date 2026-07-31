@@ -67,6 +67,25 @@ export function load(): AppState {
   }
 }
 
+/**
+ * Takes an untrusted snapshot (a cloud backup, possibly written by an older
+ * build) and normalises it into current AppState, or returns null if it isn't
+ * a plausible snapshot at all. Restoring must never leave the app holding a
+ * half-shaped object.
+ */
+export function adoptSnapshot(raw: unknown): AppState | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const candidate = raw as Partial<AppState>;
+  if (!Array.isArray(candidate.games) || !Array.isArray(candidate.runs)) return null;
+  try {
+    const state = migrate(candidate as AppState);
+    // A restored snapshot's clock belongs to whatever device wrote it.
+    return { ...state, timer: null };
+  } catch {
+    return null;
+  }
+}
+
 export function save(state: AppState): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));

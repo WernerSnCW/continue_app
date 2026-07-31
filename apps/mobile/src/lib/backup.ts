@@ -93,6 +93,132 @@ export async function pushBackup(
   }
 }
 
+// --- identity ---------------------------------------------------------------
+
+export interface Identity {
+  userId: string | null;
+  email: string | null;
+  /** True while the account is still anonymous — i.e. not recoverable. */
+  anonymous: boolean;
+}
+
+export async function getIdentity(): Promise<Identity> {
+  const c = db();
+  if (!c) return { userId: null, email: null, anonymous: true };
+  const { data } = await c.auth.getUser();
+  const u = data.user;
+  return {
+    userId: u?.id ?? null,
+    email: u?.email ?? null,
+    anonymous: u ? (u.is_anonymous ?? !u.email) : true,
+  };
+}
+
+export type AuthStep = { ok: true } | { ok: false; message: string };
+
+/**
+ * Attaches an email to the current (anonymous) account, which is what makes
+ * the backup recoverable later. Sends a confirmation code; the account is not
+ * converted until `confirmEmail` succeeds.
+ */
+export async function linkEmail(email: string): Promise<AuthStep> {
+  const c = db();
+  if (!c) return { ok: false, message: 'Backup is not configured.' };
+  await ensureSession();
+  const { error } = await c.auth.updateUser({ email: email.trim() });
+  if (error) return { ok: false, message: friendlyAuthError(error.message) };
+  return { ok: true };
+}
+
+export async function confirmEmail(email: string, token: string): Promise<AuthStep> {
+  const c = db();
+  if (!c) return { ok: false, message: 'Backup is not configured.' };
+  const { error } = await c.auth.verifyOtp({
+    email: email.trim(),
+    token: token.trim(),
+    type: 'email_change',
+  });
+  if (error) return { ok: false, message: friendlyAuthError(error.message) };
+  return { ok: true };
+}
+
+/** Sends a sign-in code to an address that already owns a backup. */
+export async function requestSignIn(email: string): Promise<AuthStep> {
+  const c = db();
+  if (!c) return { ok: false, message: 'Backup is not configured.' };
+  const { error } = await c.auth.signInWithOtp({
+    email: email.trim(),
+    // Never invent an account here: typing an address that was never linked
+    // should say so, not silently create an empty one.
+    options: { shouldCreateUser: false },
+  });
+  if (error) return { ok: false, message: friendlyAuthError(error.message) };
+  return { ok: true };
+}
+
+export async function completeSignIn(email: string, token: string): Promise<AuthStep> {
+  const c = db();
+  if (!c) return { ok: false, message: 'Backup is not configured.' };
+  const { error } = await c.auth.verifyOtp({
+    email: email.trim(),
+    token: token.trim(),
+    type: 'email',
+  });
+  if (error) return { ok: false, message: friendlyAuthError(error.message) };
+  return { ok: true };
+}
+
+/** Pulls the full snapshot for the signed-in user, for restore. */
+export async function fetchBackupPayload(): Promise<{
+  payload: unknown;
+  games: number;
+  deaths: number;
+  updatedAt: string;
+} | null> {
+  const c = db();
+  if (!c) return null;
+  const { data: auth } = await c.auth.getUser();
+  if (!auth.user) return null;
+  const { data, error } = await c
+    .from('backups')
+    .select('payload, game_count, death_count, updated_at')
+    .eq('user_id', auth.user.id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    payload: data.payload,
+    games: data.game_count as number,
+    deaths: data.death_count as number,
+    updatedAt: data.updated_at as string,
+  };
+}
+
+function friendlyAuthError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes('rate') || m.includes('too many') || m.includes('security purposes')) {
+    return 'Too many attempts just now — wait a minute and try again.';
+  }
+  // Must precede the generic "invalid" check below: Supabase reports a
+  // rejected address as `email_address_invalid`, which would otherwise be
+  // reported to the user as a bad *code*.
+  if (m.includes('email') && (m.includes('invalid') || m.includes('valid'))) {
+    return "That email address doesn't look right. Check it and try again.";
+  }
+  if (m.includes('not found') || m.includes('signups not allowed')) {
+    return "No backup found for that address. Check the spelling, or link it on the phone that has your games.";
+  }
+  if (m.includes('expired')) return 'That code has expired. Request a new one.';
+  if (m.includes('invalid') || m.includes('token')) return "That code didn't match. Try again.";
+  if (m.includes('already been registered') || m.includes('already registered')) {
+    return 'That address is already linked to another backup.';
+  }
+  // Email delivery isn't configured until a real SMTP provider is set up.
+  if (m.includes('error sending') || m.includes('smtp')) {
+    return 'Email could not be sent. The backup email service is not configured yet.';
+  }
+  return message;
+}
+
 /** Reads back what the server currently holds. Used for verification, not sync. */
 export async function fetchBackupSummary(): Promise<{
   updatedAt: string;

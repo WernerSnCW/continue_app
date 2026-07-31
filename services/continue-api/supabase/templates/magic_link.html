@@ -1,0 +1,18 @@
+<!--
+  Sign-in code for restoring a backup on a new device.
+
+  Deliberately a numeric code rather than a magic link: a link has to be
+  handed back into the app via Android App Links, which means native intent
+  filters, a verified domain and a whole class of "it opened the browser
+  instead" failures. A code the player types works everywhere, including on a
+  phone where the email is read on a different device.
+-->
+<h2>Your Continue? sign-in code</h2>
+
+<p>Enter this code in the app to restore your backup:</p>
+
+<p style="font-size:28px;font-weight:bold;letter-spacing:6px;font-family:monospace">
+  {{ .Token }}
+</p>
+
+<p>It expires in an hour. If you didn't ask for this, you can ignore this email.</p>

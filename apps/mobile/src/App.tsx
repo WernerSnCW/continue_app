@@ -12,8 +12,10 @@ import { RankingScreen } from './screens/RankingScreen';
 import { TimerBar } from './components/TimerBar';
 import { cancelTrackerReminder, scheduleTrackerReminder } from './lib/notify';
 import { useBackup } from './lib/useBackup';
+import { BackupScreen } from './screens/BackupScreen';
 import {
   activeRun,
+  adoptSnapshot,
   archivedGames,
   commitTimer,
   deathsForRun,
@@ -38,6 +40,7 @@ type View =
   | { name: 'add' }
   | { name: 'ranking' }
   | { name: 'paywall' }
+  | { name: 'backup' }
   /** `from` so Back returns where you came from, not always the counter. */
   | { name: 'stats'; gameId: string; from: 'counter' | 'ranking' }
   | { name: 'archive'; pending: IgdbSearchResult; cycle: number };
@@ -388,6 +391,22 @@ export default function App() {
             historyFor={(igdbId) => historyForIgdbId(state, igdbId)}
           />
         );
+      case 'backup':
+        return (
+          <BackupScreen
+            onBack={() => setView({ name: 'home' })}
+            onRestore={(payload) => {
+              // Snapshots come from a server round trip, so run them through
+              // the same migration the local store uses rather than trusting
+              // the shape — an older build may have written it.
+              const restored = adoptSnapshot(payload);
+              if (!restored) return;
+              setState(restored);
+              setView({ name: 'home' });
+            }}
+            local={{ games: state.games.length, deaths: state.deaths.length }}
+          />
+        );
       case 'paywall':
         return (
           <PaywallScreen
@@ -426,6 +445,7 @@ export default function App() {
             onOpenPaywall={() => setView({ name: 'paywall' })}
             onRevertUnlock={() => setUnlocked(false)}
             backup={backup}
+            onOpenBackup={() => setView({ name: 'backup' })}
           />
         );
     }

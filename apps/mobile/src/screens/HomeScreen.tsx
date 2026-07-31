@@ -25,6 +25,7 @@ interface Props {
   onOpenPaywall: () => void;
   onRevertUnlock: () => void;
   backup: { state: string; lastSavedAt: number | null };
+  onOpenBackup: () => void;
 }
 
 function backupLabel(state: string, lastSavedAt: number | null): string {
@@ -46,6 +47,7 @@ export function HomeScreen({
   onOpenPaywall,
   onRevertUnlock,
   backup,
+  onOpenBackup,
 }: Props) {
   const [muted, setMutedState] = useState(isMuted());
   const games = visibleGames(state);
@@ -131,9 +133,15 @@ export function HomeScreen({
       )}
 
       {isBackupConfigured && games.length > 0 && (
-        <p className={`backup-line${backup.state === 'saving' ? ' is-saving' : ''}`}>
-          {backupLabel(backup.state, backup.lastSavedAt)}
-        </p>
+        <button
+          className={`backup-line${backup.state === 'saving' ? ' is-saving' : ''}`}
+          onClick={() => {
+            playClick();
+            onOpenBackup();
+          }}
+        >
+          {backupLabel(backup.state, backup.lastSavedAt)} ›
+        </button>
       )}
 
       {!unlimited && (
