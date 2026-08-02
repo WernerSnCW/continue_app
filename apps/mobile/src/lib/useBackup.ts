@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { isBackupConfigured, pushBackup, type BackupState } from './backup';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getIdentity, isBackupConfigured, pushBackup, type BackupState } from './backup';
 import type { AppState } from './store';
 
 /** Wait this long after the last change before pushing. */
@@ -10,6 +10,15 @@ const MIN_INTERVAL_MS = 30_000;
 export interface BackupInfo {
   state: BackupState;
   lastSavedAt: number | null;
+  /**
+   * Whether the backup could actually be claimed after a reinstall — i.e. an
+   * email is linked. Null until we've checked. Kept distinct from "saved",
+   * because a saved-but-unclaimable backup is the exact thing that looks safe
+   * and isn't.
+   */
+  recoverable: boolean | null;
+  /** Re-check after the user links an address. */
+  refreshIdentity: () => void;
 }
 
 /**
@@ -22,9 +31,20 @@ export interface BackupInfo {
  * the debounce permanently reset.
  */
 export function useBackup(state: AppState): BackupInfo {
-  const [info, setInfo] = useState<BackupInfo>({ state: 'idle', lastSavedAt: null });
+  const [pushState, setPushState] = useState<{ state: BackupState; lastSavedAt: number | null }>({
+    state: 'idle',
+    lastSavedAt: null,
+  });
+  const [recoverable, setRecoverable] = useState<boolean | null>(null);
   const lastPushAt = useRef(0);
   const inFlight = useRef(false);
+
+  const refreshIdentity = useCallback(() => {
+    if (!isBackupConfigured) return;
+    void getIdentity().then((id) => setRecoverable(!id.anonymous));
+  }, []);
+
+  useEffect(() => refreshIdentity(), [refreshIdentity]);
 
   // Only the durable parts. Timer start times change every render they're
   // read, and would defeat the debounce.
@@ -43,7 +63,7 @@ export function useBackup(state: AppState): BackupInfo {
     const timer = setTimeout(async () => {
       if (inFlight.current) return;
       inFlight.current = true;
-      setInfo((i) => ({ ...i, state: 'saving' }));
+      setPushState((i) => ({ ...i, state: 'saving' }));
 
       const result = await pushBackup(state, {
         games: state.games.length,
@@ -53,11 +73,11 @@ export function useBackup(state: AppState): BackupInfo {
       inFlight.current = false;
       if (result.ok) {
         lastPushAt.current = Date.now();
-        setInfo({ state: 'saved', lastSavedAt: result.at ?? Date.now() });
+        setPushState({ state: 'saved', lastSavedAt: result.at ?? Date.now() });
       } else {
         // Failing to back up is never worth interrupting play over; the next
         // change will try again.
-        setInfo((i) => ({ ...i, state: navigator.onLine ? 'error' : 'offline' }));
+        setPushState((i) => ({ ...i, state: navigator.onLine ? 'error' : 'offline' }));
       }
     }, wait);
 
@@ -65,5 +85,5 @@ export function useBackup(state: AppState): BackupInfo {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature]);
 
-  return info;
+  return { ...pushState, recoverable, refreshIdentity };
 }

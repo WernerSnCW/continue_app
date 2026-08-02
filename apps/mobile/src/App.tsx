@@ -445,7 +445,11 @@ export default function App() {
       case 'backup':
         return (
           <BackupScreen
-            onBack={() => setView({ name: 'home' })}
+            onBack={() => {
+              // Linking an email happens in there, so re-check on the way out.
+              backup.refreshIdentity();
+              setView({ name: 'home' });
+            }}
             onRestore={(payload) => {
               // Snapshots come from a server round trip, so run them through
               // the same migration the local store uses rather than trusting

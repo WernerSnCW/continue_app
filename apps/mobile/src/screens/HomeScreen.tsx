@@ -27,22 +27,47 @@ interface Props {
   onRevertUnlock: () => void;
   onOpenBackup: () => void;
   onOpenAbout: () => void;
-  backup: { state: string; lastSavedAt: number | null };
+  backup: { state: string; lastSavedAt: number | null; recoverable: boolean | null };
   onDeath: (gameId: string, runSeconds: number | null) => void;
   onStartTimer: (gameId: string, runId: string) => void;
   onStopTimer: () => void;
 }
 
-function backupLabel(state: string, lastSavedAt: number | null): string {
+/**
+ * A backup with no email attached is saved but unclaimable — a reinstall
+ * creates a new anonymous identity that can't prove the old row is theirs. So
+ * "Backed up just now" would be a comfortable lie; the state that matters is
+ * whether it can actually be got back.
+ */
+function backupLabel(state: string, lastSavedAt: number | null, recoverable: boolean | null): string {
   if (state === 'saving') return 'Backing up…';
   if (state === 'offline') return 'Offline — will back up later';
   if (state === 'error') return 'Backup failed — will retry';
+  if (recoverable === false) return 'Backed up · not recoverable yet';
   if (!lastSavedAt) return 'Backup pending';
   const mins = Math.floor((Date.now() - lastSavedAt) / 60000);
   if (mins < 1) return 'Backed up just now';
   if (mins < 60) return `Backed up ${mins}m ago`;
   return `Backed up ${Math.floor(mins / 60)}h ago`;
 }
+
+const NUDGE_KEY = 'continue.protectNudge.v1';
+
+/**
+ * Only worth interrupting someone once they'd actually be upset to lose the
+ * data. Asking at first launch is the signup wall this app deliberately
+ * avoids; asking after they've lost the phone is too late.
+ */
+const NUDGE_AFTER_DEATHS = 50;
+const NUDGE_AFTER_GAMES = 2;
+
+const nudgeDismissed = (): boolean => {
+  try {
+    return localStorage.getItem(NUDGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
 
 const clock = (totalSeconds: number): string => {
   const s = Math.floor(totalSeconds);
@@ -76,6 +101,7 @@ export function HomeScreen({
   const [muted, setMutedState] = useState(isMuted());
   const [flash, setFlash] = useState<{ key: number; n: number } | null>(null);
   const [, setTick] = useState(0);
+  const [nudgeHidden, setNudgeHidden] = useState(nudgeDismissed);
 
   const games = visibleGames(state);
   const unlimited = state.entitlement.unlimitedGames;
@@ -207,6 +233,48 @@ export function HomeScreen({
         </div>
       )}
 
+      {/* Asked once, when there's finally something worth losing. A "no" is
+          permanent — the home line keeps telling the truth either way. */}
+      {isBackupConfigured &&
+        backup.recoverable === false &&
+        !nudgeHidden &&
+        (totals.deaths >= NUDGE_AFTER_DEATHS || games.length >= NUDGE_AFTER_GAMES) && (
+          <div className="protect-nudge">
+            <div className="pn-title">Don't lose this</div>
+            <p className="pn-body">
+              You've got <strong>{totals.deaths} deaths</strong> tracked across{' '}
+              {games.length === 1 ? 'a game' : `${games.length} games`}. Add an email and you can
+              get it all back on a new phone. No account, no password — it's only used to send you
+              a code.
+            </p>
+            <div className="pn-actions">
+              <button
+                className="tp-ghost"
+                onClick={() => {
+                  playClick();
+                  try {
+                    localStorage.setItem(NUDGE_KEY, '1');
+                  } catch {
+                    // Dismissal is a nicety; failing to remember it isn't fatal.
+                  }
+                  setNudgeHidden(true);
+                }}
+              >
+                Not now
+              </button>
+              <button
+                className="tp-primary"
+                onClick={() => {
+                  playClick();
+                  onOpenBackup();
+                }}
+              >
+                Add email
+              </button>
+            </div>
+          </div>
+        )}
+
       <div className="tile-row">
         <button className="nav-tile" onClick={() => {
           playClick();
@@ -252,13 +320,15 @@ export function HomeScreen({
 
       {isBackupConfigured && games.length > 0 && (
         <button
-          className={`backup-line${backup.state === 'saving' ? ' is-saving' : ''}`}
+          className={`backup-line${backup.state === 'saving' ? ' is-saving' : ''}${
+            backup.recoverable === false ? ' at-risk' : ''
+          }`}
           onClick={() => {
             playClick();
             onOpenBackup();
           }}
         >
-          {backupLabel(backup.state, backup.lastSavedAt)} ›
+          {backupLabel(backup.state, backup.lastSavedAt, backup.recoverable)} ›
         </button>
       )}
 
