@@ -12,6 +12,7 @@ import { RankingScreen } from './screens/RankingScreen';
 import { TimerBar } from './components/TimerBar';
 import { cancelTrackerReminder, scheduleTrackerReminder } from './lib/notify';
 import { useBackup } from './lib/useBackup';
+import { AboutScreen } from './screens/AboutScreen';
 import { BackupScreen } from './screens/BackupScreen';
 import { GamesListScreen } from './screens/GamesListScreen';
 import {
@@ -44,6 +45,7 @@ type View =
   | { name: 'paywall' }
   | { name: 'backup' }
   | { name: 'games' }
+  | { name: 'about' }
   /** `from` so Back returns where you came from, not always the counter. */
   | { name: 'stats'; gameId: string; from: 'counter' | 'ranking' }
   | { name: 'archive'; pending: IgdbSearchResult; cycle: number };
@@ -429,6 +431,8 @@ export default function App() {
             historyFor={(igdbId) => historyForIgdbId(state, igdbId)}
           />
         );
+      case 'about':
+        return <AboutScreen onBack={() => setView({ name: 'home' })} />;
       case 'games':
         return (
           <GamesListScreen
@@ -497,6 +501,7 @@ export default function App() {
             onRevertUnlock={() => setUnlocked(false)}
             backup={backup}
             onOpenBackup={() => setView({ name: 'backup' })}
+            onOpenAbout={() => setView({ name: 'about' })}
           />
         );
     }

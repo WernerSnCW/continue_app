@@ -26,6 +26,7 @@ interface Props {
   onOpenPaywall: () => void;
   onRevertUnlock: () => void;
   onOpenBackup: () => void;
+  onOpenAbout: () => void;
   backup: { state: string; lastSavedAt: number | null };
   onDeath: (gameId: string, runSeconds: number | null) => void;
   onStartTimer: (gameId: string, runId: string) => void;
@@ -66,6 +67,7 @@ export function HomeScreen({
   onOpenPaywall,
   onRevertUnlock,
   onOpenBackup,
+  onOpenAbout,
   backup,
   onDeath,
   onStartTimer,
@@ -281,6 +283,16 @@ export function HomeScreen({
           Unlocked · test build — revert to free plan
         </button>
       )}
+
+      <button
+        className="made-by"
+        onClick={() => {
+          playClick();
+          onOpenAbout();
+        }}
+      >
+        made by <strong>Quiet Foundry</strong> · about
+      </button>
     </div>
   );
 }

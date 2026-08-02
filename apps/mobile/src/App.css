@@ -1340,6 +1340,51 @@ body:has(.timer-bar) .screen {
 
 .text-btn.danger { color: var(--ember); border-color: rgba(255, 90, 54, 0.35); }
 
+/* --- about ------------------------------------------------------------------- */
+
+.made-by {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-faint);
+  padding: 10px 0 2px;
+  letter-spacing: 0.3px;
+}
+.made-by strong { color: var(--text-dim); font-weight: 600; }
+
+.about-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0 22px;
+}
+.about-name {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.about-block { margin-bottom: 20px; }
+.about-block h4 {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  margin: 0 0 8px;
+  letter-spacing: 0.4px;
+}
+.about-block p {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  margin: 0 0 9px;
+}
+.about-block p:last-child { margin-bottom: 0; }
+.about-block strong { color: var(--text); }
+.about-fine { font-size: 11px !important; color: var(--text-faint) !important; }
+
 /* --- permanent delete ---------------------------------------------------------
    Deliberately quieter than archiving until it's chosen, then loud once it is.
    An always-red button next to a recoverable one trains people to ignore red. */
