@@ -242,6 +242,149 @@
   border-style: dashed;
 }
 
+/* --- last played card (home) ------------------------------------------------- */
+
+.last-played {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.lp-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 2px 2px 12px;
+}
+.lp-cover {
+  width: 48px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+}
+.lp-cover-blank { display: block; border-style: dashed; }
+.lp-meta { flex: 1; min-width: 0; }
+.lp-label {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 3px;
+}
+.lp-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lp-run { display: block; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.lp-chev { color: var(--text-faint); font-size: 20px; flex-shrink: 0; }
+
+/* The whole point of the screen: a death is one tap from opening the app. */
+.lp-death {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 30% 20%, #ff8a5c, var(--ember) 65%, #8a2c14 100%);
+  border: 2px solid #ffcbb3;
+  box-shadow: 0 6px 20px rgba(255, 90, 54, 0.22);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: transform 0.08s ease;
+}
+.lp-death:active { transform: scale(0.98); }
+.lp-death span {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #2a0c02;
+}
+.lp-death.is-finished {
+  background: var(--card-2);
+  border: 1px dashed var(--line);
+  box-shadow: none;
+  padding: 14px;
+}
+.lp-death.is-finished span {
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  font-size: 12.5px;
+}
+
+.lp-timer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.lp-timer.is-running {
+  border-color: rgba(142, 227, 107, 0.55);
+  background: linear-gradient(90deg, rgba(142, 227, 107, 0.07), var(--bg-soft));
+}
+.lp-timer .timer-time { flex: 1; }
+
+/* --- home tiles --------------------------------------------------------------- */
+
+.tile-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.nav-tile {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: left;
+  min-width: 0;
+}
+.nav-tile:active { background: var(--card-2); }
+.nav-tile.accent {
+  border-color: var(--ember-dim);
+  background: linear-gradient(160deg, rgba(122, 44, 26, 0.35), var(--card));
+}
+.nt-n {
+  display: block;
+  font-family: 'Cinzel', serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+}
+.nt-plus {
+  display: block;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--ember);
+  font-weight: 300;
+}
+.nt-l {
+  display: block;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  margin-top: 5px;
+  line-height: 1.3;
+}
+.nt-hint { display: block; font-size: 9.5px; color: var(--text-faint); margin-top: 3px; }
+
+.tile-grid.summary { margin-bottom: 12px; }
+
 .add-slot {
   width: 100%;
   border: 1.5px dashed var(--line);

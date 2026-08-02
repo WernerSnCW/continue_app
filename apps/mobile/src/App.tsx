@@ -13,6 +13,7 @@ import { TimerBar } from './components/TimerBar';
 import { cancelTrackerReminder, scheduleTrackerReminder } from './lib/notify';
 import { useBackup } from './lib/useBackup';
 import { BackupScreen } from './screens/BackupScreen';
+import { GamesListScreen } from './screens/GamesListScreen';
 import {
   activeRun,
   adoptSnapshot,
@@ -21,6 +22,7 @@ import {
   deathsForRun,
   enforceGameLimit,
   historyForIgdbId,
+  lastPlayedGame,
   latestRun,
   timedGame,
   emptyState,
@@ -41,6 +43,7 @@ type View =
   | { name: 'ranking' }
   | { name: 'paywall' }
   | { name: 'backup' }
+  | { name: 'games' }
   /** `from` so Back returns where you came from, not always the counter. */
   | { name: 'stats'; gameId: string; from: 'counter' | 'ranking' }
   | { name: 'archive'; pending: IgdbSearchResult; cycle: number };
@@ -391,6 +394,15 @@ export default function App() {
             historyFor={(igdbId) => historyForIgdbId(state, igdbId)}
           />
         );
+      case 'games':
+        return (
+          <GamesListScreen
+            state={state}
+            onBack={() => setView({ name: 'home' })}
+            onOpenGame={(gameId) => setView({ name: 'counter', gameId })}
+            onAddGame={() => setView({ name: 'add' })}
+          />
+        );
       case 'backup':
         return (
           <BackupScreen
@@ -440,9 +452,13 @@ export default function App() {
           <HomeScreen
             state={state}
             onOpenGame={(gameId) => setView({ name: 'counter', gameId })}
+            onOpenGamesList={() => setView({ name: 'games' })}
             onAddGame={() => setView({ name: 'add' })}
             onOpenRanking={() => setView({ name: 'ranking' })}
             onOpenPaywall={() => setView({ name: 'paywall' })}
+            onDeath={recordDeath}
+            onStartTimer={startTimer}
+            onStopTimer={stopTimer}
             onRevertUnlock={() => setUnlocked(false)}
             backup={backup}
             onOpenBackup={() => setView({ name: 'backup' })}
@@ -451,12 +467,15 @@ export default function App() {
     }
   };
 
-  // Hidden on the counter of the game being timed — that screen already shows
-  // the full tracker, and two clocks side by side is just noise.
+  // Hidden wherever the timed game's own clock is already on screen — its
+  // counter, or the home screen when it's the last-played card. Two clocks for
+  // the same run side by side is just noise.
+  const timedIsFeatured = state.timer && lastPlayedGame(state)?.id === state.timer.gameId;
   const showTimerBar =
     !!state.timer &&
     !!timedFor &&
-    !(view.name === 'counter' && view.gameId === state.timer.gameId);
+    !(view.name === 'counter' && view.gameId === state.timer.gameId) &&
+    !(view.name === 'home' && timedIsFeatured);
 
   return (
     <>

@@ -211,6 +211,44 @@
   .upsell-bar .t1{ font-size:12px; font-weight:600; color:var(--gold); margin:0 0 2px; }
   .upsell-bar .t2{ font-size:11px; color:var(--text-dim); margin:0; }
 
+  .hero-label{ font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); margin-bottom:8px; }
+  .hero-card{
+    background: linear-gradient(160deg, var(--card-2), var(--card));
+    border: 1px solid var(--ember);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .hero-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .hero-name{ font-size:15px; font-weight:600; margin:0 0 2px; }
+  .hero-run{ font-size:11px; color:var(--text-faint); }
+  .hero-tally{ font-family:'Cinzel',serif; font-size:32px; color:var(--ember); line-height:1; margin-top:8px; }
+  .hero-tally span{ font-size:11px; color:var(--text-faint); font-family:'Inter',sans-serif; margin-left:4px; }
+  .hero-card .timer-row{ margin: 10px 0 0; background: var(--bg-soft); }
+  .hero-tap{
+    width: 42px; height:42px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #ff8a5c, var(--ember) 60%, #8a2c14 100%);
+    border: 2px solid #ffcbb3;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; cursor:pointer; transition: transform 0.15s;
+  }
+  .hero-tap .icon-skull{ width:16px; height:16px; }
+  .hero-tap .icon-skull .eye{ width:3px; height:3px; top:5px; }
+  .hero-tap .icon-skull .eye.l{ left:3px; } .hero-tap .icon-skull .eye.r{ right:3px; }
+
+  .tile-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .tile{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; text-align:center; }
+  .tile .tile-num{ font-family:'Cinzel',serif; font-size:24px; color:var(--text); margin-bottom:4px; }
+  .tile .tile-label{ font-size:10px; color:var(--text-faint); line-height:1.4; }
+  .tile.add{ border-style:dashed; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .tile.add .plus{ font-family:'Cinzel',serif; font-size:22px; color:var(--ember); margin-bottom:4px; }
+
+  .stats-section-label{ font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); margin: 2px 0 8px; }
+  .stats-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .stat-tile{ background:var(--bg-soft); border:1px solid var(--line); border-radius:12px; padding:10px 4px; text-align:center; }
+  .stat-tile .n{ font-size:14px; font-weight:700; color:var(--text); }
+  .stat-tile .l{ font-size:8px; color:var(--text-faint); margin-top:3px; line-height:1.3; }
+
   /* Screen 2: counter */
   .run-chip{
     display:inline-flex; align-self:flex-start; gap:6px; align-items:center;
@@ -361,33 +399,40 @@
             </div>
           </div>
 
-          <div class="game-card">
-            <div>
-              <p class="name">Elden Ring</p>
-              <div class="run">NG+2 &middot; 41h played</div>
+          <div class="hero-label">Last played &middot; tap to jump back in</div>
+          <div class="hero-card">
+            <div class="hero-top">
+              <div>
+                <p class="hero-name">Elden Ring</p>
+                <div class="hero-run">NG+2</div>
+              </div>
+              <div class="hero-tap" title="Quick +1 death" onclick="event.stopPropagation(); this.style.transform='scale(0.82)'; setTimeout(()=>{this.style.transform='';},150);">
+                <div class="icon icon-skull"><span class="eye l"></span><span class="eye r"></span></div>
+              </div>
             </div>
-            <div class="tally">312</div>
+            <div class="hero-tally">312<span>deaths this run</span></div>
+            <div class="timer-row" onclick="event.stopPropagation();">
+              <div class="timer-btn" id="heroTimerBtn" onclick="event.stopPropagation(); toggleHeroTimer();"><span class="play"></span></div>
+              <div class="timer-time" id="heroTimerTime">Session: 00:00:00</div>
+            </div>
           </div>
 
-          <div class="game-card">
-            <div>
-              <p class="name">Sekiro</p>
-              <div class="run">First run</div>
+          <div class="tile-grid">
+            <div class="tile">
+              <div class="tile-num">3</div>
+              <div class="tile-label">games tracked<br>3/3 free &middot; view all</div>
             </div>
-            <div class="tally">87</div>
+            <div class="tile add">
+              <div class="plus">+</div>
+              <div class="tile-label">Track another game</div>
+            </div>
           </div>
 
-          <div class="game-card">
-            <div>
-              <p class="name">Hollow Knight</p>
-              <div class="run">First run</div>
-            </div>
-            <div class="tally">54</div>
-          </div>
-
-          <div class="locked-slot">
-            <div class="name">4th slot &mdash; locked</div>
-            <div class="icon" style="font-size:14px; color:var(--text-faint);">&#128274;</div>
+          <div class="stats-section-label">Your stats, all games</div>
+          <div class="stats-grid">
+            <div class="stat-tile"><div class="n">453</div><div class="l">total deaths</div></div>
+            <div class="stat-tile"><div class="n">81h</div><div class="l">total playtime</div></div>
+            <div class="stat-tile"><div class="n">5.6/hr</div><div class="l">avg deaths/hr*</div></div>
           </div>
 
           <div class="upsell-bar">
@@ -582,6 +627,26 @@
       btn.innerHTML = '<span class="play"></span>';
     } else {
       timerInterval = setInterval(function(){ timerSeconds++; updateTimerDisplay(); }, 1000);
+      btn.innerHTML = '<span class="pause"><span></span><span></span></span>';
+    }
+  }
+
+  var heroTimerInterval = null;
+  var heroTimerSeconds = 0;
+  function updateHeroTimerDisplay(){
+    var h = Math.floor(heroTimerSeconds/3600);
+    var m = Math.floor((heroTimerSeconds%3600)/60);
+    var s = heroTimerSeconds%60;
+    document.getElementById('heroTimerTime').textContent = 'Session: '+pad(h)+':'+pad(m)+':'+pad(s);
+  }
+  function toggleHeroTimer(){
+    var btn = document.getElementById('heroTimerBtn');
+    if(heroTimerInterval){
+      clearInterval(heroTimerInterval);
+      heroTimerInterval = null;
+      btn.innerHTML = '<span class="play"></span>';
+    } else {
+      heroTimerInterval = setInterval(function(){ heroTimerSeconds++; updateHeroTimerDisplay(); }, 1000);
       btn.innerHTML = '<span class="pause"><span></span><span></span></span>';
     }
   }

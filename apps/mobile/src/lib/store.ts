@@ -292,6 +292,11 @@ export function lastActiveAt(s: AppState, gameId: string): number {
   for (const d of s.deaths) {
     if (runIds.has(d.runId)) latest = Math.max(latest, Date.parse(d.diedAt) || 0);
   }
+  // Starting a clock counts as activity at that moment — but only that moment.
+  // Treating a *running* timer as permanently the most recent would let one
+  // forgotten clock pin the wrong game to the home screen indefinitely, which
+  // is precisely the situation the "still running" reminder exists to catch.
+  if (s.timer?.gameId === gameId) latest = Math.max(latest, s.timer.startedAt);
   return latest;
 }
 
@@ -321,6 +326,44 @@ export function enforceGameLimit(s: AppState, limit: number): AppState {
   return {
     ...base,
     games: base.games.map((g) => (!g.archived && !keep.has(g.id) ? { ...g, archived: true } : g)),
+  };
+}
+
+/**
+ * The game to put front and centre on the home screen — whatever was touched
+ * most recently. A clock currently running always wins, since that's the game
+ * they're sitting in front of right now.
+ */
+export const lastPlayedGame = (s: AppState): Game | undefined => {
+  const candidates = visibleGames(s);
+  if (!candidates.length) return undefined;
+  return candidates.reduce((best, g) =>
+    lastActiveAt(s, g.id) > lastActiveAt(s, best.id) ? g : best,
+  );
+};
+
+/**
+ * Totals across every game on file, archived or not.
+ *
+ * Deliberately built from `deathsForGame`/`playedSecondsForGame`, which skip
+ * archived runs — so a swapped-out game's locked history stays locked and the
+ * headline number can't quietly hand back what the unlock is meant to sell.
+ */
+export function lifetimeTotals(s: AppState): {
+  deaths: number;
+  seconds: number;
+  ratePerHour: number | null;
+} {
+  let deaths = 0;
+  let seconds = 0;
+  for (const g of s.games) {
+    deaths += deathsForGame(s, g.id);
+    seconds += playedSecondsForGame(s, g.id);
+  }
+  return {
+    deaths,
+    seconds,
+    ratePerHour: seconds > 0 ? deaths / (seconds / 3600) : null,
   };
 }
 
