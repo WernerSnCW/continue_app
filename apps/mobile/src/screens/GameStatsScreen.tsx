@@ -19,6 +19,7 @@ interface Props {
   onArchiveGame: (gameId: string) => void;
   onRestoreGame: (gameId: string) => void;
   onRestoreDiscarded: (gameId: string) => void;
+  onDeleteGame: (gameId: string) => void;
 }
 
 const rateOf = (deaths: number, seconds: number): number | null =>
@@ -31,8 +32,10 @@ export function GameStatsScreen({
   onArchiveGame,
   onRestoreGame,
   onRestoreDiscarded,
+  onDeleteGame,
 }: Props) {
   const [confirmStop, setConfirmStop] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const game = state.games.find((g) => g.id === gameId);
   const runs = runsForGame(state, gameId);
   if (!game) return null;
@@ -281,6 +284,51 @@ export function GameStatsScreen({
           Stop tracking this game
         </button>
       )}
+
+      {/* Permanent delete, kept visually and physically apart from archiving —
+          the two read similarly in a list but only one is recoverable. */}
+      {(() => {
+        const everyRun = state.runs.filter((r) => r.gameId === gameId);
+        const ids = new Set(everyRun.map((r) => r.id));
+        const everyDeath = state.deaths.filter(
+          (d) => d.gameId === gameId || ids.has(d.runId),
+        ).length;
+        const everySecond = everyRun.reduce((n, r) => n + r.playedSeconds, 0);
+
+        if (!confirmDelete) {
+          return (
+            <button className="delete-link" onClick={() => setConfirmDelete(true)}>
+              Delete {game.name} permanently
+            </button>
+          );
+        }
+        return (
+          <div className="danger-panel">
+            <div className="dp-title">Delete {game.name} permanently?</div>
+            <p className="dp-body">
+              This erases <strong>{everyDeath} death{everyDeath === 1 ? '' : 's'}</strong> across{' '}
+              <strong>
+                {everyRun.length} run{everyRun.length === 1 ? '' : 's'}
+              </strong>
+              {everySecond > 0 && <> and {formatHours(everySecond)} of logged play time</>}, including
+              anything archived or discarded.
+            </p>
+            <p className="dp-body">
+              It cannot be undone, and it will be removed from your cloud backup the next time the
+              app saves. If you only want it off your home screen, use{' '}
+              <strong>Stop tracking</strong> instead — that keeps everything.
+            </p>
+            <div className="sheet-confirm-actions">
+              <button className="tp-ghost" onClick={() => setConfirmDelete(false)}>
+                Cancel
+              </button>
+              <button className="danger-btn" onClick={() => onDeleteGame(gameId)}>
+                Delete forever
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -25,6 +25,7 @@ interface Props {
   onStartRun: (cycle: number) => void;
   onResetRun: () => void;
   onArchiveRun: (runId: string) => void;
+  onDeleteRun: (runId: string) => void;
   onStartTimer: (runId: string) => void;
   onStopTimer: () => void;
   onOpenStats: () => void;
@@ -46,6 +47,7 @@ export function CounterScreen({
   onStartRun,
   onResetRun,
   onArchiveRun,
+  onDeleteRun,
   onStartTimer,
   onStopTimer,
   onOpenStats,
@@ -61,7 +63,7 @@ export function CounterScreen({
   const [flash, setFlash] = useState<{ key: number; n: number } | null>(null);
   const [showPrompt, setShowPrompt] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirm, setConfirm] = useState<'reset' | 'discard' | null>(null);
+  const [confirm, setConfirm] = useState<'reset' | 'discard' | 'delete' | null>(null);
   const [customCycle, setCustomCycle] = useState(() => nextCycle(state, gameId));
   const unlimited = state.entitlement.unlimitedGames;
 
@@ -424,7 +426,14 @@ export function CounterScreen({
                 <button className="sheet-row danger" onClick={() => setConfirm('discard')}>
                   <span className="sr-name">Discard this run</span>
                   <span className="sr-note">
-                    Removes it from your totals and stats. Kept in storage, never deleted.
+                    Removes it from your totals and stats. Kept in storage, recoverable later.
+                  </span>
+                </button>
+
+                <button className="sheet-row danger" onClick={() => setConfirm('delete')}>
+                  <span className="sr-name">Delete this run permanently</span>
+                  <span className="sr-note">
+                    Erases the run and its deaths outright. No undo, unlike discarding.
                   </span>
                 </button>
               </>
@@ -449,6 +458,35 @@ export function CounterScreen({
                     }}
                   >
                     Reset run
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {confirm === 'delete' && (
+              <div className="sheet-confirm">
+                <p>
+                  Permanently delete {runLabel((run ?? last)!.cycle)} and its{' '}
+                  <strong>
+                    {runDeaths} death{runDeaths === 1 ? '' : 's'}
+                  </strong>
+                  ? This cannot be undone and will be removed from your cloud backup on the next
+                  save. Discarding instead keeps the data and can be reversed.
+                </p>
+                <div className="sheet-confirm-actions">
+                  <button className="tp-ghost" onClick={() => setConfirm(null)}>
+                    Cancel
+                  </button>
+                  <button
+                    className="danger-btn"
+                    onClick={() => {
+                      playClick();
+                      const target = run ?? last;
+                      if (target) onDeleteRun(target.id);
+                      closeMenu();
+                    }}
+                  >
+                    Delete forever
                   </button>
                 </div>
               </div>

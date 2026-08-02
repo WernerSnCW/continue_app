@@ -1340,6 +1340,53 @@ body:has(.timer-bar) .screen {
 
 .text-btn.danger { color: var(--ember); border-color: rgba(255, 90, 54, 0.35); }
 
+/* --- permanent delete ---------------------------------------------------------
+   Deliberately quieter than archiving until it's chosen, then loud once it is.
+   An always-red button next to a recoverable one trains people to ignore red. */
+
+.delete-link {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px;
+  font-size: 11px;
+  color: var(--text-faint);
+  border: 1px solid transparent;
+  border-radius: 10px;
+}
+.delete-link:active { color: #ff4d4d; }
+
+.danger-panel {
+  margin-top: 10px;
+  background: linear-gradient(160deg, rgba(90, 16, 12, 0.5), var(--card));
+  border: 1px solid #ff4d4d;
+  border-radius: 12px;
+  padding: 14px;
+}
+.dp-title {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ff6b6b;
+  margin-bottom: 8px;
+}
+.dp-body {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+}
+.dp-body strong { color: var(--text); }
+
+.danger-btn {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(180deg, #d9382f, #a11f18);
+  border-radius: 9px;
+  padding: 8px 16px;
+}
+
 /* Explains what happens to an old tally when a swapped-out game is resumed. */
 .history-notice {
   background: linear-gradient(160deg, var(--card-2), var(--card));

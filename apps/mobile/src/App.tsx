@@ -197,6 +197,39 @@ export default function App() {
     setView({ name: 'home' });
   };
 
+  /**
+   * Permanent delete. Unlike archiving, this is exactly what it says: the
+   * game, every run it ever had — archived ones included — and every death
+   * recorded against them are removed from local state, and therefore from
+   * the cloud backup on the next push. There is no undo.
+   */
+  const deleteGame = (gameId: string) => {
+    setState((prev) => {
+      // A clock pointed at something about to stop existing has to go first.
+      const s = prev.timer?.gameId === gameId ? { ...prev, timer: null } : prev;
+      const runIds = new Set(s.runs.filter((r) => r.gameId === gameId).map((r) => r.id));
+      return {
+        ...s,
+        games: s.games.filter((g) => g.id !== gameId),
+        runs: s.runs.filter((r) => r.gameId !== gameId),
+        // Match on both keys: a death is orphaned if either points at the game.
+        deaths: s.deaths.filter((d) => d.gameId !== gameId && !runIds.has(d.runId)),
+      };
+    });
+    setView({ name: 'home' });
+  };
+
+  /** Permanent delete of a single run and everything recorded in it. */
+  const deleteRun = (runId: string) =>
+    setState((prev) => {
+      const s = prev.timer?.runId === runId ? { ...prev, timer: null } : prev;
+      return {
+        ...s,
+        runs: s.runs.filter((r) => r.id !== runId),
+        deaths: s.deaths.filter((d) => d.runId !== runId),
+      };
+    });
+
   /** Bring an archived game back, along with any swap-archived runs. */
   const restoreGame = (gameId: string) =>
     setState((s) => ({
@@ -362,6 +395,7 @@ export default function App() {
             onStartRun={(cycle) => startRun(view.gameId, cycle)}
             onResetRun={() => resetRun(view.gameId)}
             onArchiveRun={archiveRun}
+            onDeleteRun={deleteRun}
             onStartTimer={(runId) => startTimer(view.gameId, runId)}
             onStopTimer={stopTimer}
             onOpenStats={() => setView({ name: 'stats', gameId: view.gameId, from: 'counter' })}
@@ -382,6 +416,7 @@ export default function App() {
             onArchiveGame={archiveGame}
             onRestoreGame={restoreGame}
             onRestoreDiscarded={restoreDiscardedRuns}
+            onDeleteGame={deleteGame}
           />
         );
       case 'add':
