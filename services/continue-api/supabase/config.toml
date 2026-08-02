@@ -233,15 +233,24 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# Namecheap Private Email, which already hosts quietfoundry.io — the domain's
+# existing SPF record (include:spf.privateemail.com) authorises it, so nothing
+# has to change in DNS for mail to authenticate.
+#
+# The password is never committed: the CLI reads it from the environment when
+# `supabase config push` runs.
+#
+# Private Email is a mailbox service rather than a transactional sender, so it
+# has modest sending limits and no delivery analytics. Fine for testing and
+# early users; revisit before real volume.
+[auth.email.smtp]
+enabled = true
+host = "mail.privateemail.com"
+port = 587
+user = "contact@quietfoundry.io"
+pass = "env(SMTP_PASSWORD)"
+admin_email = "contact@quietfoundry.io"
+sender_name = "Continue?"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
@@ -252,19 +261,13 @@ otp_expiry = 3600
 # never has to handle an inbound deep link (no Android App Links, no verified
 # domain, no "it opened the browser instead").
 #
-# BLOCKED until a custom SMTP provider is configured above. Supabase rejects
-# template changes on the free tier while the built-in email provider is in
-# use, and that provider is rate limited to a handful of messages an hour and
-# is not intended for production anyway. Configure SMTP, then uncomment these
-# two blocks and run `supabase config push`.
-#
-# [auth.email.template.magic_link]
-# subject = "Your Continue? sign-in code"
-# content_path = "./supabase/templates/magic_link.html"
-#
-# [auth.email.template.email_change]
-# subject = "Confirm your email for Continue?"
-# content_path = "./supabase/templates/email_change.html"
+[auth.email.template.magic_link]
+subject = "Your Continue? sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your email for Continue?"
+content_path = "./supabase/templates/email_change.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
