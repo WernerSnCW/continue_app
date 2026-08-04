@@ -89,6 +89,25 @@ export function RankingScreen({ state, onBack, onOpenGame }: Props) {
             </div>
           )}
 
+          {/* A lone game scores 5.5 by definition — the middle of the scale —
+              because rank-based scoring has nothing to rank it against. Left
+              unexplained that number reads like a verdict on the game rather
+              than a placeholder. */}
+          {ranked.length === 1 && (
+            <div className="explainer">
+              <div className="ex-title">Why 5.5 out of 10?</div>
+              <p className="ex-body">
+                Scores are <strong>relative</strong> — each game is ranked against the others you
+                track, not against some absolute idea of difficulty. With only one game there's
+                nothing to compare it to, so it sits in the middle by default.
+              </p>
+              <p className="ex-body">
+                Track a second game and the scores start to mean something: the one killing you
+                more often per hour climbs, the other drops.
+              </p>
+            </div>
+          )}
+
           {ranked.map((g) => (
             <button
               className="diff-row"
@@ -114,6 +133,9 @@ export function RankingScreen({ state, onBack, onOpenGame }: Props) {
                 <div className={`diff-score-pill ${g.tier}`}>{g.score.toFixed(1)}</div>
                 <div className="diff-rate">{g.rate.toFixed(1)}/hr</div>
               </div>
+              <span className="row-chev" aria-hidden="true">
+                ›
+              </span>
             </button>
           ))}
 
@@ -130,6 +152,9 @@ export function RankingScreen({ state, onBack, onOpenGame }: Props) {
               <div className="diff-locked-note">
                 {g.deaths === 0 ? 'no deaths logged yet' : 'log session time to rank this one'}
               </div>
+              <span className="row-chev" aria-hidden="true">
+                ›
+              </span>
             </button>
           ))}
 

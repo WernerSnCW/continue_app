@@ -344,21 +344,37 @@
 
 /* --- home tiles --------------------------------------------------------------- */
 
+/* Tappable tiles are raised: lighter surface, brighter edge, corner chevron.
+   The read-only stat tiles below are deliberately flat and borderless, so the
+   difference between "this does something" and "this is just a number" is
+   visible at a glance rather than only on tapping. */
 .tile-row { display: flex; gap: 10px; margin-bottom: 10px; }
 .nav-tile {
+  position: relative;
   flex: 1;
-  background: var(--card);
-  border: 1px solid var(--line);
+  background: linear-gradient(160deg, var(--card-2), var(--card));
+  border: 1px solid #3a3a46;
   border-radius: 12px;
   padding: 12px 10px;
   text-align: left;
   min-width: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: transform 0.08s ease;
 }
-.nav-tile:active { background: var(--card-2); }
+.nav-tile:active { transform: scale(0.98); background: var(--card-2); }
 .nav-tile.accent {
-  border-color: var(--ember-dim);
-  background: linear-gradient(160deg, rgba(122, 44, 26, 0.35), var(--card));
+  border-color: var(--ember);
+  background: linear-gradient(160deg, rgba(122, 44, 26, 0.45), var(--card));
 }
+.nt-chev {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--text-faint);
+}
+.nav-tile.accent .nt-chev { color: var(--ember); }
 .nt-n {
   display: block;
   font-family: 'Cinzel', serif;
@@ -990,12 +1006,14 @@
   gap: 8px;
   margin-bottom: 20px;
 }
+/* Read-only. Inset and borderless on purpose — see .nav-tile above. */
 .tile {
-  background: var(--card);
-  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid transparent;
   border-radius: 10px;
   padding: 10px 6px;
   text-align: center;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .tile-n {
   font-family: 'Cinzel', serif;
@@ -1620,14 +1638,59 @@ body:has(.timer-bar) .screen {
   font-weight: 400;
 }
 
-/* Ranking rows are buttons now that they open the game's stats. */
+/* Ranking rows open the game's stats, so they need to look like rows you can
+   press — a bare list of numbers gives no hint that tapping does anything. */
 .diff-row,
 .diff-locked-row {
   width: 100%;
   text-align: left;
-  background: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 8px 11px 10px;
 }
-.diff-row:active { opacity: 0.7; }
+.diff-row:active,
+.diff-locked-row:active { background: var(--card-2); }
+
+.row-chev {
+  flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-faint);
+  padding-left: 2px;
+}
+
+/* Keeps the dashed separator that marked unranked games, now as a full row. */
+.diff-locked-row {
+  border-style: dashed;
+  margin-top: 0;
+  padding-top: 11px;
+}
+
+/* --- explainers ---------------------------------------------------------- */
+
+.explainer {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin-bottom: 14px;
+}
+.ex-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 5px;
+}
+.ex-body {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 6px;
+}
+.ex-body:last-child { margin-bottom: 0; }
+.ex-body strong { color: var(--text); }
 
 /* --- dev panel (never shipped: gated on import.meta.env.DEV) ---------------- */
 

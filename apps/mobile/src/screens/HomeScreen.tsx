@@ -276,22 +276,35 @@ export function HomeScreen({
         )}
 
       <div className="tile-row">
-        <button className="nav-tile" onClick={() => {
-          playClick();
-          onOpenGamesList();
-        }}>
+        <button
+          className="nav-tile"
+          onClick={() => {
+            playClick();
+            onOpenGamesList();
+          }}
+        >
+          <span className="nt-chev" aria-hidden="true">
+            ›
+          </span>
           <span className="nt-n">{games.length}</span>
           <span className="nt-l">game{games.length === 1 ? '' : 's'} tracked</span>
-          <span className="nt-hint">view all ›</span>
+          <span className="nt-hint">view all</span>
         </button>
-        <button className="nav-tile accent" onClick={() => {
-          playClick();
-          onAddGame();
-        }}>
+        <button
+          className="nav-tile accent"
+          onClick={() => {
+            playClick();
+            onAddGame();
+          }}
+        >
+          <span className="nt-chev" aria-hidden="true">
+            ›
+          </span>
           <span className="nt-plus" aria-hidden="true">
             +
           </span>
           <span className="nt-l">track another game</span>
+          <span className="nt-hint">search IGDB</span>
         </button>
       </div>
 
