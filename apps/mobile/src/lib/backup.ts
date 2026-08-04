@@ -195,8 +195,22 @@ export async function fetchBackupPayload(): Promise<{
 
 function friendlyAuthError(message: string): string {
   const m = message.toLowerCase();
-  if (m.includes('rate') || m.includes('too many') || m.includes('security purposes')) {
-    return 'Too many attempts just now — wait a minute and try again.';
+
+  // Supabase reports the exact cooldown ("...after 47 seconds"). Passing that
+  // through beats a vague "try again later" that leaves people guessing
+  // whether to wait ten seconds or an hour.
+  const wait = message.match(/after (\d+)\s*seconds?/i);
+  if (wait) {
+    const s = Number(wait[1]);
+    return s >= 60
+      ? `Another code can be sent in about ${Math.ceil(s / 60)} minute${Math.ceil(s / 60) === 1 ? '' : 's'}.`
+      : `Another code can be sent in ${s} seconds.`;
+  }
+  if (m.includes('rate limit') || m.includes('too many')) {
+    return 'Too many codes requested in the last hour. Try again a little later.';
+  }
+  if (m.includes('security purposes')) {
+    return 'That was too soon after the last code — wait a moment and try again.';
   }
   // Must precede the generic "invalid" check below: Supabase reports a
   // rejected address as `email_address_invalid`, which would otherwise be
