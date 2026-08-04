@@ -47,6 +47,8 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
   const [recoverable, setRecoverable] = useState<boolean | null>(null);
   const lastPushAt = useRef(0);
   const inFlight = useRef(false);
+  /** State as it stood at launch; a push only happens once it differs. */
+  const baseline = useRef<string | null>(null);
 
   const refreshIdentity = useCallback(() => {
     if (!isBackupConfigured) return;
@@ -65,7 +67,17 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
   });
 
   useEffect(() => {
-    if (!isBackupConfigured || paused) return;
+    if (!isBackupConfigured) return;
+
+    // Never push on launch. The effect runs once on mount, so without this the
+    // app uploads whatever is locally present a few seconds after every open —
+    // meaning a stale phone silently overwrites a newer cloud backup before the
+    // user can even reach the restore screen. Only real changes get saved.
+    if (baseline.current === null) {
+      baseline.current = signature;
+      return;
+    }
+    if (paused) return;
 
     const wait = Math.max(DEBOUNCE_MS, lastPushAt.current + MIN_INTERVAL_MS - Date.now());
 
