@@ -39,16 +39,17 @@ interface Props {
  * "Backed up just now" would be a comfortable lie; the state that matters is
  * whether it can actually be got back.
  */
+/** Short status only — the line already carries the "Backup & restore" label. */
 function backupLabel(state: string, lastSavedAt: number | null, recoverable: boolean | null): string {
-  if (state === 'saving') return 'Backing up…';
-  if (state === 'offline') return 'Offline — will back up later';
-  if (state === 'error') return 'Backup failed — will retry';
-  if (recoverable === false) return 'Backed up · not recoverable yet';
-  if (!lastSavedAt) return 'Backup pending';
+  if (state === 'saving') return 'saving…';
+  if (state === 'offline') return 'offline, will retry';
+  if (state === 'error') return 'failed, will retry';
+  if (recoverable === false) return 'not recoverable yet';
+  if (!lastSavedAt) return 'pending';
   const mins = Math.floor((Date.now() - lastSavedAt) / 60000);
-  if (mins < 1) return 'Backed up just now';
-  if (mins < 60) return `Backed up ${mins}m ago`;
-  return `Backed up ${Math.floor(mins / 60)}h ago`;
+  if (mins < 1) return 'saved just now';
+  if (mins < 60) return `saved ${mins}m ago`;
+  return `saved ${Math.floor(mins / 60)}h ago`;
 }
 
 const NUDGE_KEY = 'continue.protectNudge.v1';
@@ -326,9 +327,26 @@ export function HomeScreen({
       </div>
 
       {games.length === 0 && (
-        <button className="primary-btn" onClick={onAddGame}>
-          Add your first game
-        </button>
+        <>
+          <button className="primary-btn" onClick={onAddGame}>
+            Add your first game
+          </button>
+          {/* A fresh install is precisely when someone needs to recover, and
+              the status line below is hidden while there are no games — so
+              without this, restore is unreachable at the only moment it
+              matters. */}
+          {isBackupConfigured && (
+            <button
+              className="restore-cta"
+              onClick={() => {
+                playClick();
+                onOpenBackup();
+              }}
+            >
+              Already tracked games before? <strong>Restore your tally</strong>
+            </button>
+          )}
+        </>
       )}
 
       {isBackupConfigured && games.length > 0 && (
@@ -341,7 +359,7 @@ export function HomeScreen({
             onOpenBackup();
           }}
         >
-          {backupLabel(backup.state, backup.lastSavedAt, backup.recoverable)} ›
+          Backup &amp; restore · {backupLabel(backup.state, backup.lastSavedAt, backup.recoverable)} ›
         </button>
       )}
 

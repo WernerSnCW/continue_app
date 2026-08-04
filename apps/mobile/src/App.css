@@ -1187,6 +1187,29 @@
 .backup-line.is-saving { color: var(--toxic); }
 .backup-line.at-risk { color: var(--gold); }
 
+/* Fresh-install route into restore. Understated next to "add your first
+   game", but present — it is unreachable otherwise. */
+.restore-cta {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  background: var(--card);
+  border: 1px dashed var(--line);
+  border-radius: 11px;
+}
+.restore-cta strong { color: var(--gold); font-weight: 600; }
+.restore-cta:active { background: var(--card-2); }
+
+.restore-hint {
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--text-faint);
+  margin: 7px 2px 0;
+}
+
 /* Shown once, when there is finally something worth losing. */
 .protect-nudge {
   background: linear-gradient(160deg, var(--card-2), var(--card));

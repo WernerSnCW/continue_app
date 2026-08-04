@@ -98,9 +98,20 @@ export function BackupScreen({ onBack, onRestore, local }: Props) {
             </button>
           )}
 
-          <button className="text-btn wide" style={{ marginTop: 10 }} onClick={() => setMode('signin-email')}>
-            Restore a backup from another phone
+          {/* "from another phone" quietly excluded the commonest case — same
+              phone, app reinstalled — so people reinstalling didn't recognise
+              this as the thing they needed. */}
+          <button
+            className="text-btn wide"
+            style={{ marginTop: 10 }}
+            onClick={() => setMode('signin-email')}
+          >
+            Restore a backup
           </button>
+          <p className="restore-hint">
+            Reinstalled the app, got a new phone, or wiped your games by accident? Sign in with the
+            email you linked and pull your tally back.
+          </p>
 
           <p className="ghost-note" style={{ marginTop: 'auto' }}>
             No password, no account. The email is only ever used to send a sign-in code.
@@ -113,7 +124,7 @@ export function BackupScreen({ onBack, onRestore, local }: Props) {
           <p className="archive-note" style={{ marginTop: 16 }}>
             {mode === 'link-email'
               ? "We'll send a 6-digit code to confirm the address is yours."
-              : 'Enter the address you linked on your other phone.'}
+              : 'Enter the email you linked to this tally, and we’ll send a 6-digit code.'}
           </p>
           <div className="field-label">Email</div>
           <input
