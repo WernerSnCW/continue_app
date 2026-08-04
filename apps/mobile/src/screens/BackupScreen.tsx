@@ -150,7 +150,7 @@ export function BackupScreen({ onBack, onRestore, local }: Props) {
           >
             {busy ? 'Sending…' : 'Send code'}
           </button>
-          <button className="swap-link" onClick={() => setMode('overview')}>
+          <button className="secondary-action" onClick={() => setMode('overview')}>
             Cancel
           </button>
         </>
@@ -205,7 +205,7 @@ export function BackupScreen({ onBack, onRestore, local }: Props) {
           >
             {busy ? 'Checking…' : 'Confirm'}
           </button>
-          <button className="swap-link" onClick={() => setMode('overview')}>
+          <button className="secondary-action" onClick={() => setMode('overview')}>
             Cancel
           </button>
         </>
@@ -243,7 +243,7 @@ export function BackupScreen({ onBack, onRestore, local }: Props) {
           >
             Restore this backup
           </button>
-          <button className="swap-link" onClick={() => setMode('overview')}>
+          <button className="secondary-action" onClick={() => setMode('overview')}>
             Keep what's on this phone
           </button>
         </>

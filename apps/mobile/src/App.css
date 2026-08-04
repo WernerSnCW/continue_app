@@ -429,6 +429,8 @@
 .locked-slot .name { font-size: 13px; }
 .locked-slot .lock { font-size: 14px; color: var(--text-faint); }
 
+/* Tucks up under the locked slot on the games list — the negative margin is
+   deliberate there and wrong anywhere else. See .secondary-action. */
 .swap-link {
   align-self: center;
   font-size: 11.5px;
@@ -439,6 +441,20 @@
   text-underline-offset: 3px;
   text-decoration-color: var(--line);
 }
+
+/* Cancel / alternate action sitting directly beneath a primary button, where
+   it needs clear separation rather than being pulled into it. */
+.secondary-action {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  border-radius: 10px;
+}
+.secondary-action:active { color: var(--text-dim); }
+.secondary-action:disabled { opacity: 0.45; cursor: default; }
 
 .upsell-bar {
   margin-top: auto;

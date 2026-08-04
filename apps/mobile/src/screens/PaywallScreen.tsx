@@ -123,7 +123,7 @@ export function PaywallScreen({ onBack, onUnlocked, locked }: Props) {
         {status === 'buying' ? 'Confirming…' : isBillingAvailable ? 'Unlock now' : 'Coming soon'}
       </button>
 
-      <button className="swap-link" onClick={restore} disabled={busy}>
+      <button className="secondary-action" onClick={restore} disabled={busy}>
         {status === 'restoring' ? 'Checking…' : 'Restore a previous purchase'}
       </button>
 
