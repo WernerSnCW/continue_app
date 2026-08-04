@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  API 31+ replacement for backup_rules.xml. Both must exist and agree; the
+  platform picks by version. See backup_rules.xml for why Auto Backup is on.
+-->
+<data-extraction-rules>
+    <!-- Google's servers. Encrypted with the device credential. -->
+    <cloud-backup>
+        <include domain="database" path="." />
+        <include domain="file" path="." />
+        <include domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+
+    <!-- Direct phone-to-phone transfer. Same content: a new phone should carry
+         on from where the old one stopped, session included. -->
+    <device-transfer>
+        <include domain="database" path="." />
+        <include domain="file" path="." />
+        <include domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </device-transfer>
+</data-extraction-rules>

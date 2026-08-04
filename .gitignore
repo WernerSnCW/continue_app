@@ -13,8 +13,18 @@ out/
 .env.local
 .env.*.local
 
-# Capacitor native build folders
-apps/mobile/android/
+# Capacitor native projects.
+#
+# android/ is tracked, because it is no longer purely generated: the manifest
+# carries hand-written Auto Backup rules that decide whether a reinstall gets
+# someone's tally back. Left untracked, `cap add android` would regenerate the
+# manifest on a fresh checkout and those rules would vanish without a diff.
+# Its own android/.gitignore (from the Capacitor template) keeps the generated
+# parts out — build output, the Gradle cache, local SDK paths, the copied web
+# assets and the config files `cap sync` writes.
+#
+# ios/ stays ignored; there is no iOS project yet. Track it too if one is added
+# and grows any hand-edited configuration.
 apps/mobile/ios/
 apps/mobile/.capacitor/
 

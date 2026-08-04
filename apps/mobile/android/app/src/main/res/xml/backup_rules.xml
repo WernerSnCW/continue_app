@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android Auto Backup rules for API 30 and below.
+
+  Auto Backup is left ON deliberately. Most people never link an email, and for
+  them Google's copy of the webview's localStorage is the only thing standing
+  between a reinstall and an empty tally.
+
+  Its danger is that the copy can be up to a day old and comes back silently:
+  after a reinstall the app can open holding a stale state and, left unchecked,
+  push that stale state over a much richer cloud backup. That is not guarded
+  against here — it is guarded in `pushBackup`, which compares the cloud row
+  before writing and refuses to overwrite a backup that holds more. Auto Backup
+  is therefore a fallback, never a source of truth.
+
+  Declared explicitly rather than relying on the platform default so that the
+  behaviour is visible and cannot drift.
+-->
+<full-backup-content>
+    <!-- The webview's localStorage, which is where the tally actually lives,
+         along with the Supabase session that makes the cloud row claimable. -->
+    <include domain="database" path="." />
+    <include domain="file" path="." />
+    <include domain="sharedpref" path="." />
+
+    <!-- Caches are regenerated on demand; backing them up only slows restores. -->
+    <exclude domain="external" path="." />
+</full-backup-content>
