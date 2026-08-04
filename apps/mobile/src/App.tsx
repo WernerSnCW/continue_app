@@ -58,7 +58,8 @@ export default function App() {
     save(state);
   }, [state]);
 
-  const backup = useBackup(state);
+  // Pushing is suspended while the restore flow is open — see useBackup.
+  const backup = useBackup(state, view.name === 'backup');
   const timedFor = timedGame(state);
 
   /**

@@ -30,7 +30,16 @@ export interface BackupInfo {
  * excluded from the change signal too, or the ticking seconds alone would keep
  * the debounce permanently reset.
  */
-export function useBackup(state: AppState): BackupInfo {
+/**
+ * @param paused Suspends pushing. Set while the restore flow is open.
+ *
+ * Signing in during a restore switches the session to the account that owns
+ * the backup — at which point a routine push would send the *local* state to
+ * that account and overwrite the very snapshot being restored, moments before
+ * it's read. Backing up is never so urgent that it can't wait for the user to
+ * finish deciding.
+ */
+export function useBackup(state: AppState, paused = false): BackupInfo {
   const [pushState, setPushState] = useState<{ state: BackupState; lastSavedAt: number | null }>({
     state: 'idle',
     lastSavedAt: null,
@@ -56,7 +65,7 @@ export function useBackup(state: AppState): BackupInfo {
   });
 
   useEffect(() => {
-    if (!isBackupConfigured) return;
+    if (!isBackupConfigured || paused) return;
 
     const wait = Math.max(DEBOUNCE_MS, lastPushAt.current + MIN_INTERVAL_MS - Date.now());
 
@@ -82,8 +91,10 @@ export function useBackup(state: AppState): BackupInfo {
     }, wait);
 
     return () => clearTimeout(timer);
+    // `paused` is a dependency so leaving the restore flow schedules a push of
+    // whatever state won — restored or kept.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature]);
+  }, [signature, paused]);
 
   return { ...pushState, recoverable, refreshIdentity };
 }
