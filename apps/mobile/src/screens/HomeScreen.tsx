@@ -27,7 +27,16 @@ interface Props {
   onRevertUnlock: () => void;
   onOpenBackup: () => void;
   onOpenAbout: () => void;
-  backup: { state: string; lastSavedAt: number | null; recoverable: boolean | null };
+  backup: {
+    state: string;
+    lastSavedAt: number | null;
+    recoverable: boolean | null;
+    lostAccount: boolean;
+    previousEmail: string | null;
+    conflict: { updatedAt: string; games: number; deaths: number } | null;
+    stale: boolean;
+    keepLocal: () => void;
+  };
   onDeath: (gameId: string, runSeconds: number | null) => void;
   onStartTimer: (gameId: string, runId: string) => void;
   onStopTimer: () => void;
@@ -40,7 +49,15 @@ interface Props {
  * whether it can actually be got back.
  */
 /** Short status only — the line already carries the "Backup & restore" label. */
-function backupLabel(state: string, lastSavedAt: number | null, recoverable: boolean | null): string {
+function backupLabel(
+  state: string,
+  lastSavedAt: number | null,
+  recoverable: boolean | null,
+  lostAccount: boolean,
+  conflict: boolean,
+): string {
+  if (lostAccount) return 'signed out — not saving';
+  if (conflict) return 'needs your attention';
   if (state === 'saving') return 'saving…';
   if (state === 'offline') return 'offline, will retry';
   if (state === 'error') return 'failed, will retry';
@@ -49,7 +66,8 @@ function backupLabel(state: string, lastSavedAt: number | null, recoverable: boo
   const mins = Math.floor((Date.now() - lastSavedAt) / 60000);
   if (mins < 1) return 'saved just now';
   if (mins < 60) return `saved ${mins}m ago`;
-  return `saved ${Math.floor(mins / 60)}h ago`;
+  if (mins < 1440) return `saved ${Math.floor(mins / 60)}h ago`;
+  return `saved ${Math.floor(mins / 1440)}d ago`;
 }
 
 const NUDGE_KEY = 'continue.protectNudge.v1';
@@ -234,9 +252,94 @@ export function HomeScreen({
         </div>
       )}
 
+      {/* Loud, not dismissible, and above everything else: this is the one
+          state where the app is quietly not protecting anything. */}
+      {backup.lostAccount && (
+        <div className="lost-account">
+          <div className="la-title">You've been signed out</div>
+          <p className="la-body">
+            This phone was backing up to <strong>{backup.previousEmail}</strong> and no longer is.
+            Nothing has been lost — your tally is safe on this phone, and that backup is untouched —
+            but <strong>new deaths aren't being saved to the cloud</strong> until you sign back in.
+          </p>
+          <button
+            className="tp-primary"
+            onClick={() => {
+              playClick();
+              onOpenBackup();
+            }}
+          >
+            Sign back in
+          </button>
+        </div>
+      )}
+
+      {/* A week of failed pushes reads the same as a working app if the only
+          sign is a status line. It gets a banner. */}
+      {/* Only once the backup is actually claimable. Telling someone with no
+          email that their backup is a week old buries the bigger problem —
+          that it was never theirs to get back. The nudge below handles that. */}
+      {backup.stale && backup.recoverable === true && !backup.lostAccount && !backup.conflict && (
+        <div className="lost-account">
+          <div className="la-title">Backup hasn't run in a while</div>
+          <p className="la-body">
+            Your last cloud backup was{' '}
+            <strong>{new Date(backup.lastSavedAt!).toLocaleDateString()}</strong>. Everything since
+            then is only on this phone. It usually means the app hasn't had a working connection —
+            open it once on wifi and it should catch up on its own.
+          </p>
+          <button
+            className="tp-primary"
+            onClick={() => {
+              playClick();
+              onOpenBackup();
+            }}
+          >
+            Check backup
+          </button>
+        </div>
+      )}
+
+      {/* The cloud holds more than this phone does. Neither side is obviously
+          right, so the app holds still and asks rather than picking one. */}
+      {backup.conflict && !backup.lostAccount && (
+        <div className="lost-account">
+          <div className="la-title">Your cloud backup is ahead</div>
+          <p className="la-body">
+            The backup holds <strong>{backup.conflict.deaths} deaths</strong> across{' '}
+            {backup.conflict.games} game{backup.conflict.games === 1 ? '' : 's'}, saved{' '}
+            {new Date(backup.conflict.updatedAt).toLocaleString()}. This phone has fewer.{' '}
+            <strong>Nothing is being saved until you choose</strong>, so neither copy can overwrite
+            the other by accident.
+          </p>
+          <div className="pn-actions">
+            <button
+              className="tp-ghost"
+              onClick={() => {
+                playClick();
+                backup.keepLocal();
+              }}
+            >
+              Keep this phone
+            </button>
+            <button
+              className="tp-primary"
+              onClick={() => {
+                playClick();
+                onOpenBackup();
+              }}
+            >
+              Look at the backup
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Asked once, when there's finally something worth losing. A "no" is
           permanent — the home line keeps telling the truth either way. */}
       {isBackupConfigured &&
+        !backup.lostAccount &&
+        !backup.conflict &&
         backup.recoverable === false &&
         !nudgeHidden &&
         (totals.deaths >= NUDGE_AFTER_DEATHS || games.length >= NUDGE_AFTER_GAMES) && (
@@ -352,14 +455,22 @@ export function HomeScreen({
       {isBackupConfigured && games.length > 0 && (
         <button
           className={`backup-line${backup.state === 'saving' ? ' is-saving' : ''}${
-            backup.recoverable === false ? ' at-risk' : ''
+            backup.recoverable === false || backup.lostAccount || backup.conflict ? ' at-risk' : ''
           }`}
           onClick={() => {
             playClick();
             onOpenBackup();
           }}
         >
-          Backup &amp; restore · {backupLabel(backup.state, backup.lastSavedAt, backup.recoverable)} ›
+          Backup &amp; restore ·{' '}
+          {backupLabel(
+            backup.state,
+            backup.lastSavedAt,
+            backup.recoverable,
+            backup.lostAccount,
+            Boolean(backup.conflict),
+          )}{' '}
+          ›
         </button>
       )}
 

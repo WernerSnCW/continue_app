@@ -1250,7 +1250,58 @@
 .pn-body strong { color: var(--text); }
 .pn-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 
+/* Red rather than gold, and no dismiss: the nudge is advice, this is a fault.
+   Kept visually adjacent to the nudge so the two read as one family. */
+.lost-account {
+  background: linear-gradient(160deg, rgba(255, 90, 54, 0.16), var(--card));
+  border: 1px solid var(--ember);
+  border-radius: 12px;
+  padding: 13px 14px;
+  margin-bottom: 12px;
+}
+.la-title {
+  font-family: 'Cinzel', serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ember);
+  margin-bottom: 6px;
+}
+.la-body {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 12px;
+}
+.la-body strong { color: var(--text); }
+/* Direct child only: a lone action fills the banner, but a pair inside
+   .pn-actions must share the row rather than one squashing the other. */
+.lost-account > .tp-primary { width: 100%; }
+.lost-account .pn-actions button { white-space: nowrap; }
+
 /* --- backup screen ---------------------------------------------------------- */
+
+/* Raised with a chevron, matching every other tappable row in the app. */
+.version-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: linear-gradient(160deg, var(--card-2), var(--card));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 12px;
+  margin-bottom: 8px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.version-row:disabled { opacity: 0.5; }
+.vr-main { flex: 1; min-width: 0; }
+.vr-counts { font-size: 13px; color: var(--text); margin-bottom: 3px; }
+.vr-when { font-size: 11px; color: var(--text-dim); }
+.vr-reason { font-size: 10px; color: var(--text-faint); margin-top: 2px; }
+.vr-chevron { color: var(--text-faint); font-size: 18px; }
 
 .backup-card {
   background: var(--card);
@@ -1357,6 +1408,23 @@ body:has(.timer-bar) .screen {
      element-level, so without this the screen would pay the inset twice. */
   padding-top: 14px;
 }
+
+/* Sits above the timer bar and clears the status bar itself, since it can be
+   the first thing on screen. Same inset reasoning as .timer-bar below. */
+.save-failed {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  max-width: 30rem;
+  margin: 0 auto;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 12px;
+  background: linear-gradient(180deg, rgba(122, 44, 26, 0.98), rgba(58, 20, 12, 0.96));
+  border-bottom: 1px solid var(--ember);
+  color: var(--text);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.save-failed strong { color: #ffd9cf; }
 
 .timer-bar {
   position: sticky;

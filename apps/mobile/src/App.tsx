@@ -10,6 +10,7 @@ import { HomeScreen } from './screens/HomeScreen';
 import { PaywallScreen } from './screens/PaywallScreen';
 import { RankingScreen } from './screens/RankingScreen';
 import { TimerBar } from './components/TimerBar';
+import { adoptRemoteAsSynced, snapshotVersion } from './lib/backup';
 import { cancelTrackerReminder, scheduleTrackerReminder } from './lib/notify';
 import { useBackup } from './lib/useBackup';
 import { AboutScreen } from './screens/AboutScreen';
@@ -54,8 +55,13 @@ export default function App() {
   const [state, setState] = useState<AppState>(load);
   const [view, setView] = useState<View>({ name: 'home' });
 
+  // Sticky once set. A failing write usually keeps failing, and an alert that
+  // flickers off on the next successful render is worse than none — the point
+  // is that the user stops trusting the counter until it's sorted.
+  const [saveFailed, setSaveFailed] = useState(false);
+
   useEffect(() => {
-    save(state);
+    if (!save(state)) setSaveFailed(true);
   }, [state]);
 
   // Pushing is suspended while the restore flow is open — see useBackup.
@@ -206,7 +212,26 @@ export default function App() {
    * recorded against them are removed from local state, and therefore from
    * the cloud backup on the next push. There is no undo.
    */
+  /**
+   * Copies the current state into cloud history before a permanent delete.
+   *
+   * "Permanent" is honest about the local copy — but the whole point of keeping
+   * versions is that a wrong tap is survivable, and that only holds if a
+   * snapshot exists from *before* the tap. Forced past the rate limit, and
+   * fire-and-forget: a delete the user asked for is not going to be blocked on
+   * a network round trip.
+   */
+  const snapshotBeforeDelete = (what: string) => {
+    void snapshotVersion(
+      state,
+      { games: state.games.length, deaths: state.deaths.length },
+      `before deleting ${what}`,
+      true,
+    );
+  };
+
   const deleteGame = (gameId: string) => {
+    snapshotBeforeDelete('a game');
     setState((prev) => {
       // A clock pointed at something about to stop existing has to go first.
       const s = prev.timer?.gameId === gameId ? { ...prev, timer: null } : prev;
@@ -224,7 +249,8 @@ export default function App() {
   };
 
   /** Permanent delete of a single run and everything recorded in it. */
-  const deleteRun = (runId: string) =>
+  const deleteRun = (runId: string) => {
+    snapshotBeforeDelete('a run');
     setState((prev) => {
       const s = prev.timer?.runId === runId ? { ...prev, timer: null } : prev;
       return {
@@ -234,6 +260,7 @@ export default function App() {
         sessions: s.sessions.filter((x) => x.runId !== runId),
       };
     });
+  };
 
   /** Bring an archived game back, along with any swap-archived runs. */
   const restoreGame = (gameId: string) =>
@@ -463,9 +490,16 @@ export default function App() {
               const restored = adoptSnapshot(payload);
               if (!restored) return;
               setState(restored);
+              // This phone now matches what it just read, so the cloud row it
+              // read becomes the agreed sync point — otherwise restoring a
+              // smaller backup reads as a regression and the next push is
+              // refused as a conflict.
+              void adoptRemoteAsSynced();
+              backup.clearConflict();
               setView({ name: 'home' });
             }}
             local={{ games: state.games.length, deaths: state.deaths.length }}
+            localState={state}
           />
         );
       case 'paywall':
@@ -529,6 +563,16 @@ export default function App() {
 
   return (
     <>
+      {/* Above everything, on every screen, and not dismissible. If writes are
+          failing then nothing the user does from here is being kept, and that
+          has to interrupt — it is the one alert in this app worth blocking on. */}
+      {saveFailed && (
+        <div className="save-failed" role="alert">
+          <strong>Not saving to this phone.</strong> Your device is out of storage or has storage
+          switched off for this app. Deaths you tap now will be lost when the app closes. Free up
+          space, then reopen the app.
+        </div>
+      )}
       {showTimerBar && (
         <TimerBar
           gameName={timedFor.name}

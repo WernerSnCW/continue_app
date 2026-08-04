@@ -3,23 +3,43 @@ import {
   completeSignIn,
   confirmEmail,
   fetchBackupPayload,
+  fetchVersionPayload,
   getIdentity,
   linkEmail,
+  listVersions,
   requestSignIn,
+  snapshotVersion,
+  type BackupVersion,
   type Identity,
 } from '../lib/backup';
 import { playClick } from '../lib/sound';
+import type { AppState } from '../lib/store';
 
 interface Props {
   onBack: () => void;
   /** Applies a restored snapshot over local state. */
   onRestore: (payload: unknown) => void;
   local: { games: number; deaths: number };
+  /** Snapshotted to the cloud before a restore, so the restore can be undone. */
+  localState: AppState;
 }
 
-type Mode = 'overview' | 'link-email' | 'link-code' | 'signin-email' | 'signin-code' | 'restore';
+type Mode =
+  | 'overview'
+  | 'link-email'
+  | 'link-code'
+  | 'signin-email'
+  | 'signin-code'
+  | 'restore'
+  | 'versions';
 
-export function BackupScreen({ onBack, onRestore, local }: Props) {
+const reasonLabel = (reason: string): string => {
+  if (reason === 'before restore') return 'Taken before a restore';
+  if (reason.startsWith('before deleting')) return `Taken ${reason}`;
+  return 'Automatic snapshot';
+};
+
+export function BackupScreen({ onBack, onRestore, local, localState }: Props) {
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [mode, setMode] = useState<Mode>('overview');
   const [email, setEmail] = useState('');
@@ -28,6 +48,23 @@ export function BackupScreen({ onBack, onRestore, local }: Props) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [found, setFound] = useState<Awaited<ReturnType<typeof fetchBackupPayload>>>(null);
+  const [versions, setVersions] = useState<BackupVersion[] | null>(null);
+
+  /**
+   * Copies whatever is on this phone into the retained history before anything
+   * overwrites it. Forced, because the rate limit exists to keep routine pushes
+   * cheap and this is the one moment that limit must not apply: if the restore
+   * turns out to be the wrong one, this snapshot is the way back.
+   */
+  const guardBeforeRestore = async () => {
+    if (local.games === 0 && local.deaths === 0) return;
+    await snapshotVersion(
+      localState,
+      { games: local.games, deaths: local.deaths },
+      'before restore',
+      true,
+    );
+  };
 
   useEffect(() => {
     void getIdentity().then(setIdentity);
@@ -112,6 +149,25 @@ export function BackupScreen({ onBack, onRestore, local }: Props) {
             Reinstalled the app, got a new phone, or wiped your games by accident? Sign in with the
             email you linked and pull your tally back.
           </p>
+
+          {/* Already signed in on this phone — no code needed to look through
+              history. This is the path for "I deleted the wrong thing an hour
+              ago", which is far commoner than losing a phone. */}
+          {identity?.anonymous === false && (
+            <button
+              className="text-btn wide"
+              style={{ marginTop: 10 }}
+              onClick={async () => {
+                playClick();
+                setFound(null);
+                setVersions(null);
+                setMode('versions');
+                setVersions(await listVersions());
+              }}
+            >
+              Go back to an earlier snapshot
+            </button>
+          )}
 
           <p className="ghost-note" style={{ marginTop: 'auto' }}>
             No password, no account. The email is only ever used to send a sign-in code.
@@ -236,15 +292,86 @@ export function BackupScreen({ onBack, onRestore, local }: Props) {
           <div className="spacer" />
           <button
             className="primary-btn"
-            onClick={() => {
+            disabled={busy}
+            onClick={async () => {
               playClick();
+              setBusy(true);
+              await guardBeforeRestore();
+              setBusy(false);
               onRestore(found.payload);
             }}
           >
-            Restore this backup
+            {busy ? 'Saving a copy first…' : 'Restore this backup'}
+          </button>
+          <button
+            className="text-btn wide"
+            style={{ marginTop: 10 }}
+            disabled={busy}
+            onClick={async () => {
+              playClick();
+              setVersions(null);
+              setMode('versions');
+              setVersions(await listVersions());
+            }}
+          >
+            Not the right one? See earlier versions
           </button>
           <button className="secondary-action" onClick={() => setMode('overview')}>
             Keep what's on this phone
+          </button>
+        </>
+      )}
+
+      {/* The live backup is a single row that every push overwrites, so
+          "restore" used to mean "restore the most recent write" — no help at
+          all if the most recent write was the mistake. */}
+      {mode === 'versions' && (
+        <>
+          <p className="archive-note" style={{ marginTop: 16 }}>
+            Snapshots kept automatically. Pick the one that looks right — the counts should tell you
+            apart at a glance.
+          </p>
+
+          {versions === null && <p className="hint">Loading…</p>}
+          {versions?.length === 0 && (
+            <p className="hint">No earlier snapshots yet. Only the current backup is available.</p>
+          )}
+
+          {versions?.map((v) => (
+            <button
+              key={v.id}
+              className="version-row"
+              disabled={busy}
+              onClick={async () => {
+                playClick();
+                setBusy(true);
+                setError('');
+                await guardBeforeRestore();
+                const payload = await fetchVersionPayload(v.id);
+                setBusy(false);
+                if (!payload) {
+                  setError("That snapshot couldn't be loaded. Try another one.");
+                  return;
+                }
+                onRestore(payload);
+              }}
+            >
+              <div className="vr-main">
+                <div className="vr-counts">
+                  {v.games} game{v.games === 1 ? '' : 's'} · {v.deaths} death
+                  {v.deaths === 1 ? '' : 's'}
+                </div>
+                <div className="vr-when">{new Date(v.createdAt).toLocaleString()}</div>
+                <div className="vr-reason">{reasonLabel(v.reason)}</div>
+              </div>
+              <span className="vr-chevron">›</span>
+            </button>
+          ))}
+
+          {error && <p className="hint hint-error">{error}</p>}
+          <div className="spacer" />
+          <button className="secondary-action" onClick={() => setMode(found ? 'restore' : 'overview')}>
+            Back
           </button>
         </>
       )}

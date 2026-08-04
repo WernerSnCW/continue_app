@@ -45,36 +45,153 @@ function db(): SupabaseClient | null {
   return client;
 }
 
-/** Signs in anonymously if there's no session yet. Returns the user id. */
+/**
+ * Signs in anonymously if there's no session yet. Returns the user id.
+ *
+ * Refuses to mint a new anonymous account when this install is known to have
+ * had a real one. Minting on demand is right for a first run — nobody should
+ * have to register before tapping a button — but wrong for a lapsed session,
+ * where it silently turns a logged-out user into a brand-new one, starts
+ * writing to an empty row, and leaves their actual backup orphaned. Returning
+ * null instead makes the failure visible: the push fails and the app asks them
+ * to sign back in.
+ */
 export async function ensureSession(): Promise<string | null> {
   const c = db();
   if (!c) return null;
   try {
     const { data } = await c.auth.getSession();
     if (data.session?.user) return data.session.user.id;
+    if (remembered()?.email) return null;
     const { data: created, error } = await c.auth.signInAnonymously();
     if (error) return null;
+    if (created.user) remember({ userId: created.user.id, email: null });
     return created.user?.id ?? null;
   } catch {
     return null; // offline, most likely
   }
 }
 
+// --- reconciliation ---------------------------------------------------------
+
+const SYNC_KEY = 'continue.backup.sync.v1';
+
+/** The `updated_at` of the cloud row as this device last left it. */
+const lastSynced = (): string | null => {
+  try {
+    return localStorage.getItem(SYNC_KEY);
+  } catch {
+    return null;
+  }
+};
+
+const markSynced = (iso: string): void => {
+  try {
+    localStorage.setItem(SYNC_KEY, iso);
+  } catch {
+    /* best effort */
+  }
+};
+
+/**
+ * When this device last successfully wrote to the cloud, across launches.
+ *
+ * The in-session push state starts empty every launch, so a phone that has
+ * silently failed to back up for a fortnight looked exactly like one opened for
+ * the first time. This is the number that can tell them apart.
+ */
+export const lastSyncedAt = (): number | null => {
+  const iso = lastSynced();
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? null : t;
+};
+
+export interface RemoteMeta {
+  updatedAt: string;
+  games: number;
+  deaths: number;
+}
+
+/**
+ * Header only — deliberately not the payload, which can be large.
+ *
+ * Filtered by user id as well as trusting RLS. Belt and braces: a mis-scoped
+ * read here wouldn't leak anything, but it would compare this phone against
+ * someone else's counts and refuse to back up.
+ */
+export async function fetchRemoteMeta(userId?: string): Promise<RemoteMeta | null> {
+  const c = db();
+  if (!c) return null;
+  try {
+    const uid = userId ?? (await c.auth.getUser()).data.user?.id;
+    if (!uid) return null;
+    const { data } = await c
+      .from('backups')
+      .select('updated_at, game_count, death_count')
+      .eq('user_id', uid)
+      .maybeSingle();
+    if (!data) return null;
+    return {
+      updatedAt: data.updated_at as string,
+      games: (data.game_count as number) ?? 0,
+      deaths: (data.death_count as number) ?? 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Set once the user has explicitly chosen this phone's version over the
+ * cloud's. Session-scoped: the next successful push records the new
+ * `updated_at`, after which the two agree again and the question stops
+ * being asked.
+ */
+let overwriteAllowed = false;
+
+export const allowOverwrite = (): void => {
+  overwriteAllowed = true;
+};
+
 /**
  * Pushes a snapshot. Returns false on any failure — callers treat backup as
  * best-effort and never surface it as something the user must fix mid-run.
+ *
+ * `backups` holds one row per user and a push overwrites it wholesale, so a
+ * device that has fallen behind — restored from an old phone image, offline for
+ * a fortnight, freshly reinstalled — can wipe out a much richer backup simply
+ * by being opened. Before writing, the cloud row's header is compared against
+ * what this device last left there. A cloud row that has moved on *and* holds
+ * more than we're about to send is refused rather than overwritten.
+ *
+ * Only "more" is refused, deliberately. Any divergence would flag on every
+ * upgrade and after every restore, and an alert that fires constantly is one
+ * people learn to click through.
  */
 export async function pushBackup(
   payload: unknown,
   counts: { games: number; deaths: number },
-): Promise<{ ok: boolean; at?: number; message?: string }> {
+): Promise<{ ok: boolean; at?: number; message?: string; conflict?: RemoteMeta }> {
   const c = db();
   if (!c) return { ok: false, message: 'Backup is not configured.' };
 
   const userId = await ensureSession();
   if (!userId) return { ok: false, message: 'Could not reach the backup service.' };
 
+  if (!overwriteAllowed) {
+    const remote = await fetchRemoteMeta(userId);
+    if (
+      remote &&
+      remote.updatedAt !== lastSynced() &&
+      (remote.deaths > counts.deaths || remote.games > counts.games)
+    ) {
+      return { ok: false, conflict: remote, message: 'The cloud backup is ahead of this phone.' };
+    }
+  }
+
   try {
+    const at = new Date().toISOString();
     const { error } = await c.from('backups').upsert(
       {
         user_id: userId,
@@ -82,15 +199,31 @@ export async function pushBackup(
         game_count: counts.games,
         death_count: counts.deaths,
         app_version: __APP_VERSION__,
-        updated_at: new Date().toISOString(),
+        updated_at: at,
       },
       { onConflict: 'user_id' },
     );
     if (error) return { ok: false, message: error.message };
+    markSynced(at);
+    overwriteAllowed = false;
     return { ok: true, at: Date.now() };
   } catch (err) {
     return { ok: false, message: (err as Error).message };
   }
+}
+
+/**
+ * Called after a restore. The device now holds exactly what the cloud holds,
+ * so the row it just read becomes the sync point — otherwise the first push
+ * after restoring a smaller backup would look like a regression and be
+ * refused by the check above.
+ */
+export async function adoptRemoteAsSynced(): Promise<void> {
+  const remote = await fetchRemoteMeta();
+  if (remote) markSynced(remote.updatedAt);
+  // A version restore leaves the live row untouched and older than what is now
+  // on the phone, so allow that first push through explicitly.
+  overwriteAllowed = true;
 }
 
 // --- identity ---------------------------------------------------------------
@@ -100,6 +233,73 @@ export interface Identity {
   email: string | null;
   /** True while the account is still anonymous — i.e. not recoverable. */
   anonymous: boolean;
+}
+
+const IDENTITY_KEY = 'continue.identity.v1';
+
+interface RememberedIdentity {
+  userId: string;
+  email: string | null;
+}
+
+const remembered = (): RememberedIdentity | null => {
+  try {
+    const raw = localStorage.getItem(IDENTITY_KEY);
+    return raw ? (JSON.parse(raw) as RememberedIdentity) : null;
+  } catch {
+    return null;
+  }
+};
+
+const remember = (id: RememberedIdentity): void => {
+  try {
+    localStorage.setItem(IDENTITY_KEY, JSON.stringify(id));
+  } catch {
+    /* best effort */
+  }
+};
+
+export const forgetIdentity = (): void => {
+  try {
+    localStorage.removeItem(IDENTITY_KEY);
+  } catch {
+    /* best effort */
+  }
+};
+
+/**
+ * Detects the app silently becoming a different account.
+ *
+ * `ensureSession` mints a fresh anonymous user whenever no session is present,
+ * no questions asked. If a session lapses — a rotated refresh token, restored
+ * app data, an expired login — the app quietly becomes someone new and starts
+ * writing to an empty row, while the real backup sits orphaned and untouched.
+ * The user finds out only when a restore turns up nothing.
+ *
+ * So the last known account is remembered locally and checked on launch.
+ */
+export async function checkIdentityContinuity(): Promise<{
+  lostAccount: boolean;
+  previousEmail: string | null;
+}> {
+  const before = remembered();
+  const now = await getIdentity();
+
+  // Nothing to compare against yet, or we never had a real account.
+  if (!before?.email) {
+    if (now.userId) remember({ userId: now.userId, email: now.email });
+    return { lostAccount: false, previousEmail: null };
+  }
+
+  // Same account, or an upgrade of it — fine, keep it current.
+  if (now.userId === before.userId || now.email === before.email) {
+    if (now.userId) remember({ userId: now.userId, email: now.email });
+    return { lostAccount: false, previousEmail: before.email };
+  }
+
+  // We were signed in as a real account and are now someone else. Do not
+  // overwrite the remembered identity: it's the only pointer back.
+  return { lostAccount: true, previousEmail: before.email };
 }
 
 export async function getIdentity(): Promise<Identity> {
@@ -133,12 +333,13 @@ export async function linkEmail(email: string): Promise<AuthStep> {
 export async function confirmEmail(email: string, token: string): Promise<AuthStep> {
   const c = db();
   if (!c) return { ok: false, message: 'Backup is not configured.' };
-  const { error } = await c.auth.verifyOtp({
+  const { data, error } = await c.auth.verifyOtp({
     email: email.trim(),
     token: token.trim(),
     type: 'email_change',
   });
   if (error) return { ok: false, message: friendlyAuthError(error.message) };
+  if (data.user) remember({ userId: data.user.id, email: data.user.email ?? null });
   return { ok: true };
 }
 
@@ -159,12 +360,14 @@ export async function requestSignIn(email: string): Promise<AuthStep> {
 export async function completeSignIn(email: string, token: string): Promise<AuthStep> {
   const c = db();
   if (!c) return { ok: false, message: 'Backup is not configured.' };
-  const { error } = await c.auth.verifyOtp({
+  const { data, error } = await c.auth.verifyOtp({
     email: email.trim(),
     token: token.trim(),
     type: 'email',
   });
   if (error) return { ok: false, message: friendlyAuthError(error.message) };
+  // Deliberately signing in as this account makes it the one to remember.
+  if (data.user) remember({ userId: data.user.id, email: data.user.email ?? null });
   return { ok: true };
 }
 
@@ -231,6 +434,94 @@ function friendlyAuthError(message: string): string {
     return 'Email could not be sent. The backup email service is not configured yet.';
   }
   return message;
+}
+
+// --- retained history --------------------------------------------------------
+
+/** How often a routine push also lays down a retained snapshot. */
+const VERSION_EVERY_MS = 30 * 60 * 1000;
+
+let lastVersionAt = 0;
+
+export interface BackupVersion {
+  id: string;
+  games: number;
+  deaths: number;
+  reason: string;
+  createdAt: string;
+}
+
+/**
+ * Appends a retained snapshot.
+ *
+ * The live row is overwritten by every push, so without this a single bad
+ * write destroys the only copy. Rate limited for routine saves, but `force`
+ * bypasses it before anything destructive — the snapshot that matters most is
+ * the one taken immediately before an overwrite.
+ */
+export async function snapshotVersion(
+  payload: unknown,
+  counts: { games: number; deaths: number },
+  reason: string,
+  force = false,
+): Promise<boolean> {
+  const c = db();
+  if (!c) return false;
+  if (!force && Date.now() - lastVersionAt < VERSION_EVERY_MS) return false;
+
+  const userId = await ensureSession();
+  if (!userId) return false;
+  try {
+    const { error } = await c.from('backup_versions').insert({
+      user_id: userId,
+      payload,
+      game_count: counts.games,
+      death_count: counts.deaths,
+      app_version: __APP_VERSION__,
+      reason,
+    });
+    if (error) return false;
+    lastVersionAt = Date.now();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function listVersions(): Promise<BackupVersion[]> {
+  const c = db();
+  if (!c) return [];
+  const userId = await ensureSession();
+  if (!userId) return [];
+  const { data, error } = await c
+    .from('backup_versions')
+    .select('id, game_count, death_count, reason, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(40);
+  if (error || !data) return [];
+  return data.map((v) => ({
+    id: v.id as string,
+    games: v.game_count as number,
+    deaths: v.death_count as number,
+    reason: v.reason as string,
+    createdAt: v.created_at as string,
+  }));
+}
+
+export async function fetchVersionPayload(id: string): Promise<unknown | null> {
+  const c = db();
+  if (!c) return null;
+  const userId = await ensureSession();
+  if (!userId) return null;
+  const { data, error } = await c
+    .from('backup_versions')
+    .select('payload')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data.payload;
 }
 
 /** Reads back what the server currently holds. Used for verification, not sync. */

@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getIdentity, isBackupConfigured, pushBackup, type BackupState } from './backup';
+import {
+  allowOverwrite,
+  checkIdentityContinuity,
+  getIdentity,
+  isBackupConfigured,
+  lastSyncedAt,
+  pushBackup,
+  snapshotVersion,
+  type BackupState,
+  type RemoteMeta,
+} from './backup';
 import type { AppState } from './store';
 
 /** Wait this long after the last change before pushing. */
 const DEBOUNCE_MS = 6000;
 /** Never push more often than this, however busy the tapping gets. */
 const MIN_INTERVAL_MS = 30_000;
+/** After this long without a successful push, say so loudly. */
+const STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface BackupInfo {
   state: BackupState;
@@ -17,6 +29,25 @@ export interface BackupInfo {
    * and isn't.
    */
   recoverable: boolean | null;
+  /**
+   * Set when the app is signed in as a different account than the one it last
+   * knew about. Pushing is suspended while this is true — see
+   * `checkIdentityContinuity`.
+   */
+  lostAccount: boolean;
+  /** The address the backup is actually under, when the account was lost. */
+  previousEmail: string | null;
+  /**
+   * Set when the cloud holds more than this phone does. Pushing is suspended
+   * until the user picks a side — see `pushBackup`.
+   */
+  conflict: RemoteMeta | null;
+  /** No successful push for a week — a failure that has stopped being a blip. */
+  stale: boolean;
+  /** Resolves a conflict in favour of what's on this phone. */
+  keepLocal: () => void;
+  /** Drops a conflict that a restore has already settled. */
+  clearConflict: () => void;
   /** Re-check after the user links an address. */
   refreshIdentity: () => void;
 }
@@ -42,9 +73,15 @@ export interface BackupInfo {
 export function useBackup(state: AppState, paused = false): BackupInfo {
   const [pushState, setPushState] = useState<{ state: BackupState; lastSavedAt: number | null }>({
     state: 'idle',
-    lastSavedAt: null,
+    // Seeded from disk so the age of the last backup survives a restart.
+    lastSavedAt: lastSyncedAt(),
   });
   const [recoverable, setRecoverable] = useState<boolean | null>(null);
+  const [continuity, setContinuity] = useState<{
+    lostAccount: boolean;
+    previousEmail: string | null;
+  }>({ lostAccount: false, previousEmail: null });
+  const [conflict, setConflict] = useState<RemoteMeta | null>(null);
   const lastPushAt = useRef(0);
   const inFlight = useRef(false);
   /** State as it stood at launch; a push only happens once it differs. */
@@ -53,6 +90,7 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
   const refreshIdentity = useCallback(() => {
     if (!isBackupConfigured) return;
     void getIdentity().then((id) => setRecoverable(!id.anonymous));
+    void checkIdentityContinuity().then(setContinuity);
   }, []);
 
   useEffect(() => refreshIdentity(), [refreshIdentity]);
@@ -78,6 +116,11 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
       return;
     }
     if (paused) return;
+    // Signed in as somebody else. Writing now would create a second, competing
+    // backup under the wrong account and leave the real one to rot, so nothing
+    // goes out until the user has been told and has signed back in.
+    if (continuity.lostAccount) return;
+    if (conflict) return;
 
     const wait = Math.max(DEBOUNCE_MS, lastPushAt.current + MIN_INTERVAL_MS - Date.now());
 
@@ -92,9 +135,23 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
       });
 
       inFlight.current = false;
+      if (result.conflict) {
+        // Stop pushing entirely. Retrying would only ask the same question
+        // again, and the answer has to come from the user.
+        setConflict(result.conflict);
+        setPushState((i) => ({ ...i, state: 'error' }));
+        return;
+      }
       if (result.ok) {
         lastPushAt.current = Date.now();
         setPushState({ state: 'saved', lastSavedAt: result.at ?? Date.now() });
+        // Lay down a retained snapshot alongside the live row. Rate limited
+        // internally, so this is cheap on most pushes.
+        void snapshotVersion(
+          state,
+          { games: state.games.length, deaths: state.deaths.length },
+          'periodic',
+        );
       } else {
         // Failing to back up is never worth interrupting play over; the next
         // change will try again.
@@ -106,7 +163,32 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
     // `paused` is a dependency so leaving the restore flow schedules a push of
     // whatever state won — restored or kept.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, paused]);
+  }, [signature, paused, continuity.lostAccount, conflict]);
 
-  return { ...pushState, recoverable, refreshIdentity };
+  /**
+   * A backup that has quietly not happened for a week. Distinct from the
+   * transient error state, which is expected and self-healing — this is the one
+   * that has stopped being a blip. Only meaningful once the device has managed
+   * at least one successful push; before that, "not recoverable yet" already
+   * covers it.
+   */
+  const stale =
+    pushState.lastSavedAt !== null && Date.now() - pushState.lastSavedAt > STALE_AFTER_MS;
+
+  const clearConflict = useCallback(() => setConflict(null), []);
+  const keepLocal = useCallback(() => {
+    allowOverwrite();
+    setConflict(null);
+  }, []);
+
+  return {
+    ...pushState,
+    recoverable,
+    ...continuity,
+    conflict,
+    stale,
+    keepLocal,
+    clearConflict,
+    refreshIdentity,
+  };
 }

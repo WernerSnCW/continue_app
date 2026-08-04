@@ -101,11 +101,21 @@ export function adoptSnapshot(raw: unknown): AppState | null {
   }
 }
 
-export function save(state: AppState): void {
+/**
+ * Writes state to disk. Returns false if the write failed.
+ *
+ * A failure here is the worst thing that can happen to this app and the least
+ * visible: the in-memory state carries on looking correct, the counter goes up,
+ * and everything is lost the moment the webview is killed. Quota exhaustion and
+ * storage being disabled both land here. Callers are expected to surface it —
+ * see `saveFailed` in App.
+ */
+export function save(state: AppState): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
+    return true;
   } catch {
-    // Quota or private-mode failures are non-fatal; the in-memory state stands.
+    return false;
   }
 }
 
