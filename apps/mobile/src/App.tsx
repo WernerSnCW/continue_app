@@ -216,6 +216,7 @@ export default function App() {
         runs: s.runs.filter((r) => r.gameId !== gameId),
         // Match on both keys: a death is orphaned if either points at the game.
         deaths: s.deaths.filter((d) => d.gameId !== gameId && !runIds.has(d.runId)),
+        sessions: s.sessions.filter((x) => x.gameId !== gameId && !runIds.has(x.runId)),
       };
     });
     setView({ name: 'home' });
@@ -229,6 +230,7 @@ export default function App() {
         ...s,
         runs: s.runs.filter((r) => r.id !== runId),
         deaths: s.deaths.filter((d) => d.runId !== runId),
+        sessions: s.sessions.filter((x) => x.runId !== runId),
       };
     });
 
@@ -259,7 +261,8 @@ export default function App() {
     setState((s) => {
       const run = activeRun(s, gameId);
       if (!run) return s;
-      return { ...s, deaths: [...s.deaths, newDeath(gameId, run.id, runSeconds)] };
+      const sessionId = s.timer?.runId === run.id ? s.timer.sessionId : null;
+      return { ...s, deaths: [...s.deaths, newDeath(gameId, run.id, runSeconds, sessionId)] };
     });
 
   const undoDeath = (gameId: string) =>
@@ -340,7 +343,9 @@ export default function App() {
     // tracker shouldn't silently discard the first one's time.
     setState((prev) => ({
       ...commitTimer(prev),
-      timer: { gameId, runId, startedAt: Date.now() },
+      // The id exists from the moment the clock starts so deaths recorded
+      // during this stretch can be attributed to it as they happen.
+      timer: { gameId, runId, sessionId: crypto.randomUUID(), startedAt: Date.now() },
     }));
 
   /** Stop the clock, folding elapsed time into the run it was timing. */

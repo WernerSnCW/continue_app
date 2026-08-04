@@ -72,11 +72,36 @@ export interface Run {
   playedSeconds: number;
 }
 
+/**
+ * One clocked-in stretch of play: from starting the tracker to pausing it.
+ *
+ * Recorded rather than derived. `Run.playedSeconds` only ever held a running
+ * total, so pausing threw the boundary away and thirty sessions were
+ * indistinguishable from one long one. Deaths could be clustered by wall clock
+ * to guess at sessions, but a session with no deaths would leave no trace and
+ * a coffee break would look like two — a guess presented as fact, on a screen
+ * whose whole appeal is that the numbers are real.
+ */
+export interface Session {
+  id: string;
+  gameId: string;
+  runId: string;
+  startedAt: IsoTimestamp;
+  endedAt: IsoTimestamp;
+  seconds: number;
+}
+
 export interface DeathEntry {
   id: string;
   gameId: string;
   runId: string;
   diedAt: IsoTimestamp;
+  /**
+   * The session this death happened in, or null if the tracker wasn't running.
+   * The id is minted when the tracker starts — not when it stops — precisely
+   * so deaths can be attributed as they happen.
+   */
+  sessionId: string | null;
   /**
    * How many seconds into the run's logged play time this death happened,
    * giving an ordered timeline within the run. Null when the session timer

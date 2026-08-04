@@ -87,5 +87,9 @@ export function formatHours(seconds: number): string {
   const h = seconds / 3600;
   if (h >= 10) return `${Math.round(h)}h`;
   if (h >= 1) return `${h.toFixed(1)}h`;
-  return `${Math.max(1, Math.round(seconds / 60))}m`;
+  // Below a minute, round up to "1m" and a 5-second session reads as 1m — fine
+  // for a run total, misleading in a per-session list where short stretches
+  // are real.
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  return `${Math.round(seconds / 60)}m`;
 }

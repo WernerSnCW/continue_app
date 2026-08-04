@@ -3,7 +3,7 @@
  * Preferences when the native wrapper exists, since everything goes through
  * load()/save().
  */
-import type { DeathEntry, Entitlement, Game, Run, RunType } from '@continue/shared';
+import type { DeathEntry, Entitlement, Game, Run, RunType, Session } from '@continue/shared';
 
 const KEY = 'continue.state.v1';
 
@@ -18,6 +18,12 @@ const KEY = 'continue.state.v1';
 export interface RunningTimer {
   gameId: string;
   runId: string;
+  /**
+   * Minted when the clock starts, so deaths recorded during the session can
+   * point at it immediately. The Session row itself is only written on stop,
+   * when the end time is known.
+   */
+  sessionId: string;
   startedAt: number;
 }
 
@@ -25,6 +31,7 @@ export interface AppState {
   games: Game[];
   runs: Run[];
   deaths: DeathEntry[];
+  sessions: Session[];
   entitlement: Entitlement;
   timer: RunningTimer | null;
 }
@@ -33,6 +40,7 @@ export const emptyState = (): AppState => ({
   games: [],
   runs: [],
   deaths: [],
+  sessions: [],
   entitlement: { unlimitedGames: false, purchasedAt: null },
   timer: null,
 });
@@ -51,8 +59,15 @@ function migrate(raw: AppState): AppState {
       // automatic swap path didn't exist yet.
       archivedReason: r.archivedReason ?? (r.archived ? 'discarded' : null),
     })),
-    deaths: (raw.deaths ?? []).map((d) => ({ ...d, runSeconds: d.runSeconds ?? null })),
-    timer: raw.timer ?? null,
+    deaths: (raw.deaths ?? []).map((d) => ({
+      ...d,
+      runSeconds: d.runSeconds ?? null,
+      sessionId: d.sessionId ?? null,
+    })),
+    sessions: raw.sessions ?? [],
+    // A timer persisted before sessions existed has no id; give it one so the
+    // stretch still in progress gets recorded when it stops.
+    timer: raw.timer ? { ...raw.timer, sessionId: raw.timer.sessionId ?? id() } : null,
   };
 }
 
@@ -130,6 +145,7 @@ export function newDeath(
   gameId: string,
   runId: string,
   runSeconds: number | null = null,
+  sessionId: string | null = null,
 ): DeathEntry {
   return {
     id: id(),
@@ -137,6 +153,7 @@ export function newDeath(
     runId,
     diedAt: now(),
     runSeconds,
+    sessionId,
     bossName: null,
     location: null,
     note: null,
@@ -247,6 +264,31 @@ export const deathsToday = (s: AppState, gameId: string): number => {
   );
 };
 
+/** Sessions for a run, oldest first. */
+export const sessionsForRun = (s: AppState, runId: string): Session[] =>
+  s.sessions
+    .filter((x) => x.runId === runId)
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+
+export const deathsInSession = (s: AppState, sessionId: string): number =>
+  s.deaths.reduce((n, d) => (d.sessionId === sessionId ? n + 1 : n), 0);
+
+/**
+ * Play time on a run that no session accounts for.
+ *
+ * Almost entirely time logged before sessions were recorded, which cannot be
+ * reconstructed. Surfaced rather than hidden so the per-session figures always
+ * add up to the run total in front of the user.
+ */
+export const unsessionedSecondsForRun = (s: AppState, run: Run): number => {
+  const accounted = sessionsForRun(s, run.id).reduce((n, x) => n + x.seconds, 0);
+  return Math.max(0, run.playedSeconds - accounted);
+};
+
+/** Deaths on a run that happened with the tracker off. */
+export const untimedDeathsForRun = (s: AppState, runId: string): number =>
+  s.deaths.reduce((n, d) => (d.runId === runId && d.sessionId === null ? n + 1 : n), 0);
+
 /** Seconds accrued on the running clock but not yet committed to the run. */
 export const liveSecondsFor = (s: AppState, runId: string): number =>
   s.timer?.runId === runId ? Math.max(0, (Date.now() - s.timer.startedAt) / 1000) : 0;
@@ -265,13 +307,32 @@ export const playedSecondsForGame = (s: AppState, gameId: string): number =>
  */
 export function commitTimer(s: AppState): AppState {
   if (!s.timer) return s;
-  const { runId } = s.timer;
+  const { runId, gameId, sessionId, startedAt } = s.timer;
   const elapsed = Math.floor(liveSecondsFor(s, runId));
+
+  // Every stop funnels through here, so this is the one place a session has
+  // to be written. Zero-length stretches (a mis-tap) add nothing and are not
+  // worth a row.
+  const session: Session[] =
+    elapsed >= 1
+      ? [
+          {
+            id: sessionId,
+            gameId,
+            runId,
+            startedAt: new Date(startedAt).toISOString(),
+            endedAt: new Date(startedAt + elapsed * 1000).toISOString(),
+            seconds: elapsed,
+          },
+        ]
+      : [];
+
   return {
     ...s,
     runs: s.runs.map((r) =>
       r.id === runId ? { ...r, playedSeconds: r.playedSeconds + elapsed } : r,
     ),
+    sessions: [...s.sessions, ...session],
     timer: null,
   };
 }

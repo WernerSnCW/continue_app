@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { HelpTip } from '../components/HelpTip';
 import { formatHours } from '../lib/ranking';
 import {
+  deathsInSession,
   runsArchivedBecause,
+  sessionsForRun,
+  unsessionedSecondsForRun,
+  untimedDeathsForRun,
   deathsForGame,
   deathsForRun,
   deathsToday,
@@ -36,6 +40,7 @@ export function GameStatsScreen({
 }: Props) {
   const [confirmStop, setConfirmStop] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const game = state.games.find((g) => g.id === gameId);
   const runs = runsForGame(state, gameId);
   if (!game) return null;
@@ -144,6 +149,10 @@ export function GameStatsScreen({
       </div>
 
       {perRun.map(({ run, deaths, rate, share, timeline, untimed }) => {
+        const sessions = sessionsForRun(state, run.id);
+        const unsessioned = unsessionedSecondsForRun(state, run);
+        const offClock = untimedDeathsForRun(state, run.id);
+        const open = expandedRun === run.id;
         // Scale the timeline to whichever is longer: the logged clock, or the
         // last death. A death can land past the committed total when the run
         // is still in progress.
@@ -187,6 +196,72 @@ export function GameStatsScreen({
               </span>
               <span>{rate !== null ? `${rate.toFixed(1)}/hr` : '—'}</span>
             </div>
+
+            {(sessions.length > 0 || unsessioned > 0) && (
+              <button
+                className="session-toggle"
+                onClick={() => setExpandedRun(open ? null : run.id)}
+                aria-expanded={open}
+              >
+                {sessions.length > 0
+                  ? `${sessions.length} session${sessions.length === 1 ? '' : 's'}`
+                  : 'Session detail'}
+                <span className={`st-chev${open ? ' open' : ''}`} aria-hidden="true">
+                  ›
+                </span>
+              </button>
+            )}
+
+            {open && (
+              <div className="session-list">
+                {sessions.map((sx, i) => {
+                  const sd = deathsInSession(state, sx.id);
+                  // Same floor as the live pace on the counter: a rate off a
+                  // two-minute stretch extrapolates to a meaningless number.
+                  const sr = sx.seconds >= 300 ? sd / (sx.seconds / 3600) : null;
+                  return (
+                    <div className="session-row" key={sx.id}>
+                      <span className="sx-n">{i + 1}</span>
+                      <span className="sx-mid">
+                        <span className="sx-when">
+                          {new Date(sx.startedAt).toLocaleDateString(undefined, {
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                          {' · '}
+                          {new Date(sx.startedAt).toLocaleTimeString(undefined, {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        <span className="sx-meta">
+                          {formatHours(sx.seconds)} · {sd} death{sd === 1 ? '' : 's'}
+                        </span>
+                      </span>
+                      <span className="sx-rate">{sr !== null ? `${sr.toFixed(1)}/hr` : '—'}</span>
+                    </div>
+                  );
+                })}
+
+                {/* Time and deaths that predate session tracking, or happened
+                    with the clock off. Shown so the parts add up to the whole. */}
+                {unsessioned > 0 && (
+                  <div className="session-row is-legacy">
+                    <span className="sx-n">–</span>
+                    <span className="sx-mid">
+                      <span className="sx-when">Before session tracking</span>
+                      <span className="sx-meta">{formatHours(unsessioned)} · not broken down</span>
+                    </span>
+                  </div>
+                )}
+                {offClock > 0 && (
+                  <div className="session-note">
+                    {offClock} death{offClock === 1 ? '' : 's'} logged with the tracker off, so they
+                    belong to no session.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       })}
