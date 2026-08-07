@@ -8,7 +8,10 @@
   "scripts": {
     "dev": "pnpm --filter @continue/mobile dev",
     "build": "pnpm --filter @continue/mobile build",
-    "typecheck": "pnpm -r typecheck"
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "check": "pnpm -r typecheck && pnpm -r lint && pnpm -r test"
   },
   "devDependencies": {
     "sharp": "^0.35.3"

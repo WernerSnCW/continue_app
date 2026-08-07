@@ -103,12 +103,29 @@ const markSynced = (iso: string): void => {
  * guard into "complain whenever the cloud holds more" — which is what a
  * deliberate delete looks like from the outside.
  */
-const isSameAsLastSynced = (remoteUpdatedAt: string): boolean => {
-  const seen = lastSyncedAt();
+export const isSameInstant = (remoteUpdatedAt: string, seen: number | null): boolean => {
   if (seen === null) return false;
   const remote = Date.parse(remoteUpdatedAt);
   return !Number.isNaN(remote) && remote === seen;
 };
+
+/**
+ * Whether a push must be refused because the cloud holds more than we're about
+ * to replace it with, on a row this device hasn't seen.
+ *
+ * Split out from `pushBackup` as a pure function purely so it can be tested —
+ * it is the single decision standing between a stale device and someone's
+ * tally, and it is not reachable from a test while buried in a network call.
+ */
+export function shouldRefusePush(
+  remote: RemoteMeta | null,
+  local: { games: number; deaths: number },
+  lastSeenAt: number | null,
+): boolean {
+  if (!remote) return false;
+  if (isSameInstant(remote.updatedAt, lastSeenAt)) return false;
+  return remote.deaths > local.deaths || remote.games > local.games;
+}
 
 /**
  * When this device last successfully wrote to the cloud, across launches.
@@ -198,12 +215,8 @@ export async function pushBackup(
 
   if (!overwriteAllowed) {
     const remote = await fetchRemoteMeta(userId);
-    if (
-      remote &&
-      !isSameAsLastSynced(remote.updatedAt) &&
-      (remote.deaths > counts.deaths || remote.games > counts.games)
-    ) {
-      return { ok: false, conflict: remote, message: 'The cloud backup is ahead of this phone.' };
+    if (shouldRefusePush(remote, counts, lastSyncedAt())) {
+      return { ok: false, conflict: remote!, message: 'The cloud backup is ahead of this phone.' };
     }
   }
 
