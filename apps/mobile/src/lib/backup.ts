@@ -94,6 +94,23 @@ const markSynced = (iso: string): void => {
 };
 
 /**
+ * True when the cloud row is the same one this device last wrote.
+ *
+ * Compared as instants, never as strings. We send `toISOString()`
+ * (`...123Z`) and Postgres hands the same moment back as `...123+00:00`, so a
+ * string comparison is false even when the timestamps are identical. That made
+ * every push look like it was landing on an unseen row, and turned the conflict
+ * guard into "complain whenever the cloud holds more" — which is what a
+ * deliberate delete looks like from the outside.
+ */
+const isSameAsLastSynced = (remoteUpdatedAt: string): boolean => {
+  const seen = lastSyncedAt();
+  if (seen === null) return false;
+  const remote = Date.parse(remoteUpdatedAt);
+  return !Number.isNaN(remote) && remote === seen;
+};
+
+/**
  * When this device last successfully wrote to the cloud, across launches.
  *
  * The in-session push state starts empty every launch, so a phone that has
@@ -183,7 +200,7 @@ export async function pushBackup(
     const remote = await fetchRemoteMeta(userId);
     if (
       remote &&
-      remote.updatedAt !== lastSynced() &&
+      !isSameAsLastSynced(remote.updatedAt) &&
       (remote.deaths > counts.deaths || remote.games > counts.games)
     ) {
       return { ok: false, conflict: remote, message: 'The cloud backup is ahead of this phone.' };
