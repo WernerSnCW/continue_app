@@ -3,6 +3,27 @@
  */
 
 /**
+ * Elapsed play time as HH:MM:SS.
+ *
+ * Hours are padded to two digits but never truncated, so the clock does not
+ * roll over at 99:59:59 — it widens to 100:00:00 and keeps counting. That is
+ * the right trade for a run total: a hundred hours on one Souls playthrough is
+ * ordinary, and a clock that silently wrapped to 00:00:00 would quietly discard
+ * four days of someone's tracked time. The layout is sized to take the extra
+ * digits; verified down to a 360px phone at four-digit hours.
+ *
+ * Negative and non-finite inputs read as zero rather than "-1:-1:-5". Nothing
+ * in the app produces one today — committed seconds only ever accumulate — but
+ * a restored snapshot is untrusted input, and a broken clock is a bug report
+ * about lost data.
+ */
+export function formatClock(totalSeconds: number): string {
+  const s = Number.isFinite(totalSeconds) ? Math.max(0, Math.floor(totalSeconds)) : 0;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
+}
+
+/**
  * How long ago something happened, in the fewest characters that still read.
  *
  * Deliberately coarse: this exists so someone can glance down mid-fight and

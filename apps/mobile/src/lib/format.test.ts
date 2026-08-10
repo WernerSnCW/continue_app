@@ -1,10 +1,59 @@
 import { describe, expect, it } from 'vitest';
-import { formatAgo } from './format';
+import { formatAgo, formatClock } from './format';
 
 const SEC = 1000;
 const MIN = 60 * SEC;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
+
+describe('formatClock', () => {
+  it.each([
+    [0, '00:00:00'],
+    [1, '00:00:01'],
+    [59, '00:00:59'],
+    [60, '00:01:00'],
+    [3599, '00:59:59'],
+    [3600, '01:00:00'],
+    [86399, '23:59:59'],
+    [86400, '24:00:00'],
+  ])('formats %is as %s', (seconds, expected) => {
+    expect(formatClock(seconds)).toBe(expected);
+  });
+
+  it('widens past 99 hours instead of rolling over', () => {
+    // The question this suite exists for. A run total of 100 hours is ordinary
+    // for a Souls game; wrapping to 00:00:00 would silently discard four days
+    // of tracked time and read as data loss.
+    expect(formatClock(99 * 3600 + 59 * 60 + 59)).toBe('99:59:59');
+    expect(formatClock(100 * 3600)).toBe('100:00:00');
+    expect(formatClock(1000 * 3600 + 61)).toBe('1000:01:01');
+    expect(formatClock(10_000 * 3600)).toBe('10000:00:00');
+  });
+
+  it('keeps minutes and seconds two digits however large the hours', () => {
+    // Only the hours field may grow; if minutes ever widened the colons would
+    // stop lining up between the three places this clock is drawn.
+    const parts = formatClock(12_345 * 3600 + 5 * 60 + 7).split(':');
+    expect(parts[1]).toHaveLength(2);
+    expect(parts[2]).toHaveLength(2);
+    expect(parts[0]).toBe('12345');
+  });
+
+  it('truncates rather than rounds a fractional second', () => {
+    // The live clock is fed a float. Rounding up would show 00:00:01 before a
+    // full second had passed.
+    expect(formatClock(1.99)).toBe('00:00:01');
+  });
+
+  it.each([
+    ['a negative from a corrupt snapshot', -5],
+    ['NaN', NaN],
+    ['Infinity', Infinity],
+  ])('reads %s as zero rather than nonsense', (_label, input) => {
+    // Untrusted restored input; the naive version renders "-1:-1:-5".
+    expect(formatClock(input)).toBe('00:00:00');
+  });
+});
 
 describe('formatAgo', () => {
   it.each([

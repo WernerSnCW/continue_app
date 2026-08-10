@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { FREE_TIER_GAME_LIMIT } from '@continue/shared';
 import { isBackupConfigured } from '../lib/backup';
 import { isMockBilling } from '../lib/billing';
+import { formatClock } from '../lib/format';
 import { isMuted, playClick, playDeath, setMuted } from '../lib/sound';
 import { BarsIcon, SkullIcon } from '../components/icons';
 import { Logo } from '../components/Logo';
@@ -88,12 +89,6 @@ const nudgeDismissed = (): boolean => {
   } catch {
     return false;
   }
-};
-
-const clock = (totalSeconds: number): string => {
-  const s = Math.floor(totalSeconds);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
 };
 
 /**
@@ -235,7 +230,7 @@ export function HomeScreen({
                     <span className="play" />
                   )}
                 </button>
-                <span className="timer-time">{clock(sessionSeconds)}</span>
+                <span className="timer-time">{formatClock(sessionSeconds)}</span>
                 <span className={`timer-state${timing ? ' on' : ''}`}>
                   {timing ? 'RECORDING' : sessionSeconds === 0 ? 'NOT STARTED' : 'PAUSED'}
                 </span>

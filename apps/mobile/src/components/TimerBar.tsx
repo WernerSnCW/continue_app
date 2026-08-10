@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatClock } from '../lib/format';
 
 interface Props {
   gameName: string;
@@ -9,12 +10,6 @@ interface Props {
   /** Jump to the counter for the game being timed. */
   onOpen: () => void;
   onPause: () => void;
-}
-
-function formatClock(totalSeconds: number): string {
-  const s = Math.floor(totalSeconds);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
 }
 
 /**

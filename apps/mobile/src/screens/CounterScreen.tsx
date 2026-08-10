@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BarsIcon, SkullIcon, SwordsIcon } from '../components/icons';
 import { HelpTip } from '../components/HelpTip';
-import { formatAgo } from '../lib/format';
+import { formatAgo, formatClock } from '../lib/format';
 import { playAdvance, playClick, playDeath } from '../lib/sound';
 import {
   activeRun,
@@ -32,12 +32,6 @@ interface Props {
   onStartTimer: (runId: string) => void;
   onStopTimer: () => void;
   onOpenStats: () => void;
-}
-
-function formatClock(totalSeconds: number): string {
-  const s = Math.floor(totalSeconds);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
 }
 
 export function CounterScreen({
