@@ -18,11 +18,13 @@
 -->
 <full-backup-content>
     <!-- The webview's localStorage, which is where the tally actually lives,
-         along with the Supabase session that makes the cloud row claimable. -->
+         along with the Supabase session that makes the cloud row claimable.
+
+         Listing includes explicitly means everything else — external storage
+         and caches among them — is already excluded. An <exclude> for a domain
+         that was never included is not merely redundant, it fails lint on a
+         release build (". is not in an included path"). -->
     <include domain="database" path="." />
     <include domain="file" path="." />
     <include domain="sharedpref" path="." />
-
-    <!-- Caches are regenerated on demand; backing them up only slows restores. -->
-    <exclude domain="external" path="." />
 </full-backup-content>

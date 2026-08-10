@@ -4,12 +4,14 @@
   platform picks by version. See backup_rules.xml for why Auto Backup is on.
 -->
 <data-extraction-rules>
-    <!-- Google's servers. Encrypted with the device credential. -->
+    <!-- Google's servers. Encrypted with the device credential.
+
+         Explicit includes already exclude everything else; an <exclude> for a
+         domain that was never included fails lint on a release build. -->
     <cloud-backup>
         <include domain="database" path="." />
         <include domain="file" path="." />
         <include domain="sharedpref" path="." />
-        <exclude domain="external" path="." />
     </cloud-backup>
 
     <!-- Direct phone-to-phone transfer. Same content: a new phone should carry
@@ -18,6 +20,5 @@
         <include domain="database" path="." />
         <include domain="file" path="." />
         <include domain="sharedpref" path="." />
-        <exclude domain="external" path="." />
     </device-transfer>
 </data-extraction-rules>
