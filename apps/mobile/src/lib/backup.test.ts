@@ -9,13 +9,42 @@
  * deliberate delete looks like. It took a phone, a real account and a delete to
  * find. It takes one assertion to catch.
  */
-import { describe, expect, it } from 'vitest';
-import { isSameInstant, shouldRefusePush, type RemoteMeta } from './backup';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { isOptedOut, isSameInstant, shouldRefusePush, type RemoteMeta } from './backup';
 
 const remote = (updatedAt: string, games: number, deaths: number): RemoteMeta => ({
   updatedAt,
   games,
   deaths,
+});
+
+describe('isOptedOut', () => {
+  // The flag that stops a deleted account being silently replaced by a fresh
+  // anonymous one. Pinned by key name and exact value: a typo either way makes
+  // deletion a lie again, and nothing else would fail.
+  const KEY = 'continue.backup.optedout.v1';
+
+  beforeEach(() => localStorage.clear());
+
+  it('is false on a normal install', () => {
+    expect(isOptedOut()).toBe(false);
+  });
+
+  it('is true once the flag is set', () => {
+    localStorage.setItem(KEY, '1');
+    expect(isOptedOut()).toBe(true);
+  });
+
+  it('is false again once the flag is cleared', () => {
+    localStorage.setItem(KEY, '1');
+    localStorage.removeItem(KEY);
+    expect(isOptedOut()).toBe(false);
+  });
+
+  it('does not treat some other truthy value as opted out', () => {
+    localStorage.setItem(KEY, 'false');
+    expect(isOptedOut()).toBe(false);
+  });
 });
 
 describe('isSameInstant', () => {

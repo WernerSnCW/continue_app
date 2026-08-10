@@ -6,6 +6,7 @@ import {
   fetchBackupPayload,
   fetchVersionPayload,
   getIdentity,
+  isOptedOut,
   linkEmail,
   listVersions,
   requestSignIn,
@@ -63,6 +64,7 @@ export function BackupScreen({
   const [found, setFound] = useState<Awaited<ReturnType<typeof fetchBackupPayload>>>(null);
   const [versions, setVersions] = useState<BackupVersion[] | null>(null);
   const [confirmText, setConfirmText] = useState('');
+  const [optedOut, setOptedOut] = useState(isOptedOut);
 
   /**
    * Copies whatever is on this phone into the retained history before anything
@@ -98,7 +100,10 @@ export function BackupScreen({
     return r.ok;
   };
 
-  const refresh = async () => setIdentity(await getIdentity());
+  const refresh = async () => {
+    setIdentity(await getIdentity());
+    setOptedOut(isOptedOut());
+  };
 
   return (
     <div className="screen">
@@ -121,7 +126,18 @@ export function BackupScreen({
             </div>
           </div>
 
-          {identity?.anonymous === false ? (
+          {optedOut ? (
+            /* Deleted their account. Says what the state is and how to leave
+               it, without implying they did something wrong. */
+            <div className="backup-card">
+              <div className="bc-label">Backup is off</div>
+              <p className="bc-note">
+                You deleted your account, so nothing is being saved to the cloud. Your games are
+                still here on this phone and still counting — they just aren't backed up. Adding an
+                email starts a new backup from scratch; the deleted one is gone for good.
+              </p>
+            </div>
+          ) : identity?.anonymous === false ? (
             <div className="backup-card ok">
               <div className="bc-label">Recoverable</div>
               <div className="bc-value">{identity.email}</div>
@@ -145,7 +161,7 @@ export function BackupScreen({
 
           {identity?.anonymous !== false && (
             <button className="primary-btn" onClick={() => setMode('link-email')}>
-              Add an email to protect my tally
+              {optedOut ? 'Start backing up again' : 'Add an email to protect my tally'}
             </button>
           )}
 
@@ -252,6 +268,10 @@ export function BackupScreen({
                 setError(r.message ?? 'Could not delete the account.');
                 return;
               }
+              await refresh();
+              setConfirmText('');
+              setNotice('Your account and everything in it has been deleted.');
+              setMode('overview');
               onAccountDeleted();
             }}
           >

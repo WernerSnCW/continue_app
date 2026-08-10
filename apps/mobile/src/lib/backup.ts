@@ -62,6 +62,8 @@ export async function ensureSession(): Promise<string | null> {
   try {
     const { data } = await c.auth.getSession();
     if (data.session?.user) return data.session.user.id;
+    // Deleted their account and hasn't asked for a new one.
+    if (isOptedOut()) return null;
     if (remembered()?.email) return null;
     const { data: created, error } = await c.auth.signInAnonymously();
     if (error) return null;
@@ -292,6 +294,8 @@ export async function deleteAccount(): Promise<{ ok: boolean; message?: string }
   // the token needed to prove who we are.
   await c.auth.signOut().catch(() => {});
   forgetIdentity();
+  // Before anything can mint a replacement account behind their back.
+  setOptedOut(true);
   try {
     localStorage.removeItem(SYNC_KEY);
   } catch {
@@ -346,6 +350,35 @@ const remember = (id: RememberedIdentity): void => {
 export const forgetIdentity = (): void => {
   try {
     localStorage.removeItem(IDENTITY_KEY);
+  } catch {
+    /* best effort */
+  }
+};
+
+const OPTED_OUT_KEY = 'continue.backup.optedout.v1';
+
+/**
+ * Set when the user deletes their account, and only cleared when they
+ * deliberately sign back up.
+ *
+ * Without it, deleting an account is a lie: `ensureSession` finds no session,
+ * sees no remembered email, and mints a fresh anonymous user within seconds —
+ * so the app carries on backing up to a brand new account nobody asked for.
+ * Someone who just asked us to erase everything wants backup to stop, not to
+ * restart under a different id.
+ */
+export const isOptedOut = (): boolean => {
+  try {
+    return localStorage.getItem(OPTED_OUT_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const setOptedOut = (on: boolean): void => {
+  try {
+    if (on) localStorage.setItem(OPTED_OUT_KEY, '1');
+    else localStorage.removeItem(OPTED_OUT_KEY);
   } catch {
     /* best effort */
   }
@@ -408,6 +441,10 @@ export type AuthStep = { ok: true } | { ok: false; message: string };
 export async function linkEmail(email: string): Promise<AuthStep> {
   const c = db();
   if (!c) return { ok: false, message: 'Backup is not configured.' };
+  // Asking to link an address is asking to be backed up again, which is the
+  // one thing that undoes a deletion opt-out. Cleared before `ensureSession`,
+  // which would otherwise refuse to mint the account this needs.
+  setOptedOut(false);
   await ensureSession();
   const { error } = await c.auth.updateUser({ email: email.trim() });
   if (error) return { ok: false, message: friendlyAuthError(error.message) };
@@ -431,6 +468,8 @@ export async function confirmEmail(email: string, token: string): Promise<AuthSt
 export async function requestSignIn(email: string): Promise<AuthStep> {
   const c = db();
   if (!c) return { ok: false, message: 'Backup is not configured.' };
+  // Same reasoning as linkEmail: signing back in is a deliberate opt-in.
+  setOptedOut(false);
   const { error } = await c.auth.signInWithOtp({
     email: email.trim(),
     // Never invent an account here: typing an address that was never linked

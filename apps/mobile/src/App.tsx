@@ -503,11 +503,15 @@ export default function App() {
             onAccountDeleted={() => {
               // The games stay — deleting the account is about the cloud copy,
               // not the tally on this phone. Re-checking identity is what flips
-              // the UI back to "not recoverable yet" and stops the app claiming
-              // a backup that no longer exists.
+              // the UI to "backup is off" and stops the app claiming a backup
+              // that no longer exists.
+              //
+              // Deliberately no navigation: the backup screen then shows the
+              // resulting state, so the deletion is confirmed where it was
+              // asked for rather than silently dropping them on the home
+              // screen wondering whether it worked.
               backup.refreshIdentity();
               backup.clearConflict();
-              setView({ name: 'home' });
             }}
           />
         );

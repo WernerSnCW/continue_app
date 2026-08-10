@@ -35,6 +35,7 @@ interface Props {
     previousEmail: string | null;
     conflict: { updatedAt: string; games: number; deaths: number } | null;
     stale: boolean;
+    optedOut: boolean;
     keepLocal: () => void;
   };
   onDeath: (gameId: string, runSeconds: number | null) => void;
@@ -48,14 +49,15 @@ interface Props {
  * "Backed up just now" would be a comfortable lie; the state that matters is
  * whether it can actually be got back.
  */
-/** Short status only — the line already carries the "Backup & restore" label. */
-function backupLabel(
-  state: string,
-  lastSavedAt: number | null,
-  recoverable: boolean | null,
-  lostAccount: boolean,
-  conflict: boolean,
-): string {
+/**
+ * Short status only — the line already carries the "Backup & restore" label.
+ *
+ * Ordered worst-first: each state below is only reachable because none of the
+ * ones above it apply.
+ */
+function backupLabel(b: Props['backup']): string {
+  const { state, lastSavedAt, recoverable, lostAccount, conflict, optedOut } = b;
+  if (optedOut) return 'off — account deleted';
   if (lostAccount) return 'signed out — not saving';
   if (conflict) return 'needs your attention';
   if (state === 'saving') return 'saving…';
@@ -279,7 +281,11 @@ export function HomeScreen({
       {/* Only once the backup is actually claimable. Telling someone with no
           email that their backup is a week old buries the bigger problem —
           that it was never theirs to get back. The nudge below handles that. */}
-      {backup.stale && backup.recoverable === true && !backup.lostAccount && !backup.conflict && (
+      {backup.stale &&
+        backup.recoverable === true &&
+        !backup.lostAccount &&
+        !backup.conflict &&
+        !backup.optedOut && (
         <div className="lost-account">
           <div className="la-title">Backup hasn't run in a while</div>
           <p className="la-body">
@@ -340,6 +346,9 @@ export function HomeScreen({
       {isBackupConfigured &&
         !backup.lostAccount &&
         !backup.conflict &&
+        // They deleted their account on purpose. "Don't lose this!" is the
+        // wrong thing to say to someone who just asked us to lose it.
+        !backup.optedOut &&
         backup.recoverable === false &&
         !nudgeHidden &&
         (totals.deaths >= NUDGE_AFTER_DEATHS || games.length >= NUDGE_AFTER_GAMES) && (
@@ -455,7 +464,11 @@ export function HomeScreen({
       {isBackupConfigured && games.length > 0 && (
         <button
           className={`backup-line${backup.state === 'saving' ? ' is-saving' : ''}${
-            backup.recoverable === false || backup.lostAccount || backup.conflict ? ' at-risk' : ''
+            (backup.recoverable === false && !backup.optedOut) ||
+            backup.lostAccount ||
+            backup.conflict
+              ? ' at-risk'
+              : ''
           }`}
           onClick={() => {
             playClick();
@@ -463,14 +476,7 @@ export function HomeScreen({
           }}
         >
           Backup &amp; restore ·{' '}
-          {backupLabel(
-            backup.state,
-            backup.lastSavedAt,
-            backup.recoverable,
-            backup.lostAccount,
-            Boolean(backup.conflict),
-          )}{' '}
-          ›
+          {backupLabel(backup)} ›
         </button>
       )}
 

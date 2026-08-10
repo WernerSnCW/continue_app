@@ -4,6 +4,7 @@ import {
   checkIdentityContinuity,
   getIdentity,
   isBackupConfigured,
+  isOptedOut,
   lastSyncedAt,
   pushBackup,
   snapshotVersion,
@@ -44,6 +45,8 @@ export interface BackupInfo {
   conflict: RemoteMeta | null;
   /** No successful push for a week — a failure that has stopped being a blip. */
   stale: boolean;
+  /** They deleted their account; nothing is backed up until they opt back in. */
+  optedOut: boolean;
   /** Resolves a conflict in favour of what's on this phone. */
   keepLocal: () => void;
   /** Drops a conflict that a restore has already settled. */
@@ -82,6 +85,7 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
     previousEmail: string | null;
   }>({ lostAccount: false, previousEmail: null });
   const [conflict, setConflict] = useState<RemoteMeta | null>(null);
+  const [optedOut, setOptedOut] = useState(isOptedOut);
   const lastPushAt = useRef(0);
   const inFlight = useRef(false);
   /** State as it stood at launch; a push only happens once it differs. */
@@ -89,6 +93,7 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
 
   const refreshIdentity = useCallback(() => {
     if (!isBackupConfigured) return;
+    setOptedOut(isOptedOut());
     void getIdentity().then((id) => setRecoverable(!id.anonymous));
     void checkIdentityContinuity().then(setContinuity);
   }, []);
@@ -121,6 +126,8 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
     // goes out until the user has been told and has signed back in.
     if (continuity.lostAccount) return;
     if (conflict) return;
+    // They asked us to stop. Pushing would silently create a new account.
+    if (optedOut) return;
 
     const wait = Math.max(DEBOUNCE_MS, lastPushAt.current + MIN_INTERVAL_MS - Date.now());
 
@@ -163,7 +170,7 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
     // `paused` is a dependency so leaving the restore flow schedules a push of
     // whatever state won — restored or kept.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, paused, continuity.lostAccount, conflict]);
+  }, [signature, paused, continuity.lostAccount, conflict, optedOut]);
 
   /**
    * A backup that has quietly not happened for a week. Distinct from the
@@ -187,6 +194,7 @@ export function useBackup(state: AppState, paused = false): BackupInfo {
     ...continuity,
     conflict,
     stale,
+    optedOut,
     keepLocal,
     clearConflict,
     refreshIdentity,
