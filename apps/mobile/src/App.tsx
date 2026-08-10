@@ -500,6 +500,15 @@ export default function App() {
             }}
             local={{ games: state.games.length, deaths: state.deaths.length }}
             localState={state}
+            onAccountDeleted={() => {
+              // The games stay — deleting the account is about the cloud copy,
+              // not the tally on this phone. Re-checking identity is what flips
+              // the UI back to "not recoverable yet" and stops the app claiming
+              // a backup that no longer exists.
+              backup.refreshIdentity();
+              backup.clearConflict();
+              setView({ name: 'home' });
+            }}
           />
         );
       case 'paywall':

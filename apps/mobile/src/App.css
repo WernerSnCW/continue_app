@@ -1641,6 +1641,30 @@ body:has(.timer-bar) .screen {
   border-radius: 9px;
   padding: 8px 16px;
 }
+/* As the primary action on its own screen rather than one option among several. */
+.danger-btn.wide {
+  width: 100%;
+  padding: 12px;
+  font-size: 12.5px;
+}
+.danger-btn:disabled {
+  background: var(--card-2);
+  color: var(--text-faint);
+}
+
+/* Route into account deletion. Understated on purpose: it sits at the bottom of
+   the backup screen, and someone looking for "protect my tally" must not meet a
+   red button on the way. The confirmation screen does the shouting. */
+.danger-link {
+  align-self: center;
+  margin-top: 18px;
+  padding: 8px 4px;
+  font-size: 11px;
+  color: var(--text-faint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.danger-link:active { color: #d9382f; }
 
 /* Explains what happens to an old tally when a swapped-out game is resumed. */
 .history-notice {

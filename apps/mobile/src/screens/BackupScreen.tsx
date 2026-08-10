@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   completeSignIn,
   confirmEmail,
+  deleteAccount,
   fetchBackupPayload,
   fetchVersionPayload,
   getIdentity,
@@ -22,6 +23,8 @@ interface Props {
   local: { games: number; deaths: number };
   /** Snapshotted to the cloud before a restore, so the restore can be undone. */
   localState: AppState;
+  /** Cloud data and account are gone; the app resets its backup state. */
+  onAccountDeleted: () => void;
 }
 
 type Mode =
@@ -31,7 +34,11 @@ type Mode =
   | 'signin-email'
   | 'signin-code'
   | 'restore'
-  | 'versions';
+  | 'versions'
+  | 'delete-account';
+
+/** Typed to confirm deletion. Deliberately not "yes" — muscle memory types that. */
+const DELETE_PHRASE = 'DELETE';
 
 const reasonLabel = (reason: string): string => {
   if (reason === 'before restore') return 'Taken before a restore';
@@ -39,7 +46,13 @@ const reasonLabel = (reason: string): string => {
   return 'Automatic snapshot';
 };
 
-export function BackupScreen({ onBack, onRestore, local, localState }: Props) {
+export function BackupScreen({
+  onBack,
+  onRestore,
+  local,
+  localState,
+  onAccountDeleted,
+}: Props) {
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [mode, setMode] = useState<Mode>('overview');
   const [email, setEmail] = useState('');
@@ -49,6 +62,7 @@ export function BackupScreen({ onBack, onRestore, local, localState }: Props) {
   const [notice, setNotice] = useState('');
   const [found, setFound] = useState<Awaited<ReturnType<typeof fetchBackupPayload>>>(null);
   const [versions, setVersions] = useState<BackupVersion[] | null>(null);
+  const [confirmText, setConfirmText] = useState('');
 
   /**
    * Copies whatever is on this phone into the retained history before anything
@@ -172,6 +186,87 @@ export function BackupScreen({ onBack, onRestore, local, localState }: Props) {
           <p className="ghost-note" style={{ marginTop: 'auto' }}>
             No password, no account. The email is only ever used to send a sign-in code.
           </p>
+
+          {/* Last thing on the screen, and only once there is an account to
+              delete. Nobody looking for "back up my tally" should trip over it. */}
+          {identity?.userId && (
+            <button
+              className="danger-link"
+              onClick={() => {
+                playClick();
+                setConfirmText('');
+                setError('');
+                setMode('delete-account');
+              }}
+            >
+              Delete my account and cloud data
+            </button>
+          )}
+        </>
+      )}
+
+      {mode === 'delete-account' && (
+        <>
+          <div className="backup-card warn" style={{ marginTop: 16 }}>
+            <div className="bc-label">This cannot be undone</div>
+            <p className="bc-note">
+              Deleting removes your cloud backup, every earlier snapshot we kept, and the account
+              itself{identity?.email ? ` (${identity.email})` : ''}. There is no way for us to get
+              any of it back afterwards — not from a support request, not from a database backup.
+            </p>
+          </div>
+
+          <div className="backup-card">
+            <div className="bc-label">What stays on this phone</div>
+            <p className="bc-note">
+              Nothing on this phone is touched. Your {local.games} game
+              {local.games === 1 ? '' : 's'} and {local.deaths} death
+              {local.deaths === 1 ? '' : 's'} keep working exactly as they do now — they simply stop
+              being backed up. To clear the phone too, delete your games afterwards.
+            </p>
+          </div>
+
+          <div className="field-label">Type {DELETE_PHRASE} to confirm</div>
+          <input
+            className="search-input code-input"
+            type="text"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            value={confirmText}
+            placeholder={DELETE_PHRASE}
+            onChange={(e) => setConfirmText(e.target.value)}
+          />
+          {error && <p className="hint hint-error">{error}</p>}
+
+          <div className="spacer" />
+          <button
+            className="danger-btn wide"
+            disabled={busy || confirmText.trim().toUpperCase() !== DELETE_PHRASE}
+            onClick={async () => {
+              playClick();
+              setBusy(true);
+              setError('');
+              const r = await deleteAccount();
+              setBusy(false);
+              if (!r.ok) {
+                setError(r.message ?? 'Could not delete the account.');
+                return;
+              }
+              onAccountDeleted();
+            }}
+          >
+            {busy ? 'Deleting…' : 'Permanently delete my account'}
+          </button>
+          <button
+            className="secondary-action"
+            onClick={() => {
+              setConfirmText('');
+              setError('');
+              setMode('overview');
+            }}
+          >
+            Keep my account
+          </button>
         </>
       )}
 

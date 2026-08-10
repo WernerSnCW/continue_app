@@ -248,6 +248,60 @@ export async function pushBackup(
  * after restoring a smaller backup would look like a regression and be
  * refused by the check above.
  */
+/**
+ * Permanently deletes the account and everything the cloud holds for it.
+ *
+ * Play's User Data policy requires this to exist in the app for anything that
+ * lets people create an account. The heavy lifting is server side — see the
+ * delete-account function — because removing an `auth.users` row needs the
+ * service role, and `backup_versions` has no client delete policy by design.
+ *
+ * Local state is the caller's problem: this clears the cloud, the session, and
+ * the identity markers, then leaves the app to reset itself. Deliberately in
+ * that order, so a failure part-way through never leaves the phone wiped while
+ * the cloud copy survives.
+ */
+export async function deleteAccount(): Promise<{ ok: boolean; message?: string }> {
+  const c = db();
+  if (!c || !URL) return { ok: false, message: 'Backup is not configured.' };
+
+  const { data } = await c.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) {
+    return { ok: false, message: 'You are not signed in on this phone, so there is nothing to delete.' };
+  }
+
+  try {
+    const res = await fetch(`${URL}/functions/v1/delete-account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: KEY!,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      return { ok: false, message: body.error ?? 'Could not reach the server. Nothing was deleted.' };
+    }
+  } catch {
+    return { ok: false, message: 'Could not reach the server. Nothing was deleted.' };
+  }
+
+  // Only now that the cloud is definitively gone. Signing out first would lose
+  // the token needed to prove who we are.
+  await c.auth.signOut().catch(() => {});
+  forgetIdentity();
+  try {
+    localStorage.removeItem(SYNC_KEY);
+  } catch {
+    /* best effort */
+  }
+  // The account is gone, so nothing is left to conflict with.
+  overwriteAllowed = false;
+  return { ok: true };
+}
+
 export async function adoptRemoteAsSynced(): Promise<void> {
   const remote = await fetchRemoteMeta();
   if (remote) markSynced(remote.updatedAt);
