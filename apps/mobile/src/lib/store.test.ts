@@ -13,6 +13,7 @@ import {
   deathsForGame,
   emptyState,
   enforceGameLimit,
+  lastDeathAtForRun,
   lastPlayedGame,
   lifetimeTotals,
   load,
@@ -313,6 +314,38 @@ describe('unsessionedSecondsForRun', () => {
       ],
     };
     expect(unsessionedSecondsForRun(s, r)).toBe(0);
+  });
+});
+
+describe('lastDeathAtForRun', () => {
+  it('is null when the run has no deaths', () => {
+    const s: AppState = { ...emptyState(), runs: [run('r1', 'g1')] };
+    expect(lastDeathAtForRun(s, 'r1')).toBe(null);
+  });
+
+  it('finds the latest death regardless of stored order', () => {
+    // A restored snapshot carries whatever order the writing device had, so
+    // taking the last element would give the wrong answer.
+    const s: AppState = {
+      ...emptyState(),
+      deaths: [
+        death('d1', 'g1', 'r1', { diedAt: '2026-03-01T10:00:00.000Z' }),
+        death('d3', 'g1', 'r1', { diedAt: '2026-03-01T12:00:00.000Z' }),
+        death('d2', 'g1', 'r1', { diedAt: '2026-03-01T11:00:00.000Z' }),
+      ],
+    };
+    expect(lastDeathAtForRun(s, 'r1')).toBe('2026-03-01T12:00:00.000Z');
+  });
+
+  it('ignores deaths on other runs', () => {
+    const s: AppState = {
+      ...emptyState(),
+      deaths: [
+        death('d1', 'g1', 'r1', { diedAt: '2026-03-01T10:00:00.000Z' }),
+        death('d2', 'g1', 'r2', { diedAt: '2026-03-09T10:00:00.000Z' }),
+      ],
+    };
+    expect(lastDeathAtForRun(s, 'r1')).toBe('2026-03-01T10:00:00.000Z');
   });
 });
 

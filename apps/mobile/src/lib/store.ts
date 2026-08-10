@@ -280,6 +280,22 @@ export const sessionsForRun = (s: AppState, runId: string): Session[] =>
     .filter((x) => x.runId === runId)
     .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
 
+/**
+ * When the most recent death on a run was recorded, or null if there are none.
+ *
+ * Not simply the last element: deaths are appended in order today, but a
+ * restored snapshot carries whatever order the writing device had, and this
+ * feeds a "did I forget to tap?" reading that is worse than useless if wrong.
+ */
+export function lastDeathAtForRun(s: AppState, runId: string): string | null {
+  let latest: string | null = null;
+  for (const d of s.deaths) {
+    if (d.runId !== runId) continue;
+    if (latest === null || d.diedAt > latest) latest = d.diedAt;
+  }
+  return latest;
+}
+
 export const deathsInSession = (s: AppState, sessionId: string): number =>
   s.deaths.reduce((n, d) => (d.sessionId === sessionId ? n + 1 : n), 0);
 

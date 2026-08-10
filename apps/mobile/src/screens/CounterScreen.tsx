@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { BarsIcon, SkullIcon, SwordsIcon } from '../components/icons';
 import { HelpTip } from '../components/HelpTip';
+import { formatAgo } from '../lib/format';
 import { playAdvance, playClick, playDeath } from '../lib/sound';
 import {
   activeRun,
   deathsForGame,
   deathsForRun,
+  deathsInSession,
   deathsToday,
+  lastDeathAtForRun,
   latestRun,
   liveSecondsFor,
   nextCycle,
@@ -71,11 +74,15 @@ export function CounterScreen({
   const liveSeconds = run ? liveSecondsFor(state, run.id) : 0;
   const sessionSeconds = committedSeconds + liveSeconds;
 
+  // Ticks for the running clock, and — more slowly — to age the "last death"
+  // reading when the tracker is off, so it doesn't sit frozen at whatever it
+  // said when the screen opened.
+  const hasDeathToAge = state.deaths.some((d) => d.runId === (run?.id ?? last?.id));
   useEffect(() => {
-    if (!running) return;
-    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    if (!running && !hasDeathToAge) return;
+    const t = setInterval(() => setTick((n) => n + 1), running ? 1000 : 20_000);
     return () => clearInterval(t);
-  }, [running]);
+  }, [running, hasDeathToAge]);
 
   const startTimer = () => {
     if (!run) return;
@@ -103,6 +110,13 @@ export function CounterScreen({
   if (!game) return null;
 
   const runDeaths = run ? deathsForRun(state, run.id) : last ? deathsForRun(state, last.id) : 0;
+  const shownRun = run ?? last;
+  const lastDeathIso = shownRun ? lastDeathAtForRun(state, shownRun.id) : null;
+  // A snapshot from an older build could carry an unparseable date; showing
+  // "NaN ago" would be worse than showing nothing.
+  const parsedLastDeath = lastDeathIso ? Date.parse(lastDeathIso) : NaN;
+  const lastDeath = Number.isNaN(parsedLastDeath) ? null : parsedLastDeath;
+  const sessionDeaths = state.timer ? deathsInSession(state, state.timer.sessionId) : 0;
   const PACE_MIN_SECONDS = 300;
   const paceReady = sessionSeconds >= PACE_MIN_SECONDS && runDeaths > 0;
   const pace = paceReady ? runDeaths / (sessionSeconds / 3600) : null;
@@ -294,6 +308,19 @@ export function CounterScreen({
             <div className="stat-pill">
               <div className="n">{deathsForGame(state, gameId)}</div>
               <div className="l">all-time</div>
+            </div>
+            {/* Only counts deaths tapped with the tracker on, because that is
+                what a session is. Showing a number while the clock is off would
+                imply the untimed ones were being counted somewhere. */}
+            <div className="stat-pill">
+              <div className="n">{running ? sessionDeaths : '—'}</div>
+              <div className="l">session</div>
+            </div>
+            {/* The "did I forget to tap?" reading. Nothing else on this screen
+                answers it: the counter shows how many, never how long ago. */}
+            <div className="stat-pill">
+              <div className="n">{lastDeath ? formatAgo(Date.now() - lastDeath) : '—'}</div>
+              <div className="l">last death</div>
             </div>
           </div>
         </div>
