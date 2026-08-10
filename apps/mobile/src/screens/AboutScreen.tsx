@@ -6,6 +6,14 @@ interface Props {
 }
 
 /**
+ * Play requires the privacy policy to be reachable from a stable public URL,
+ * and the same URL goes in the store listing. Kept as constants so the two
+ * links cannot drift apart from the pages themselves.
+ */
+const PRIVACY_URL = 'https://quietfoundry.io/continue/privacy';
+const DELETE_URL = 'https://quietfoundry.io/continue/delete-my-data';
+
+/**
  * Written in the app's own voice rather than as a product page. Anyone opening
  * this already installed the thing — they want to know who made it and why it
  * exists, not to be sold it a second time.
@@ -93,6 +101,26 @@ export function AboutScreen({ onBack }: Props) {
         <p className="about-fine">
           Game names and cover art come from IGDB. Your tally lives on your phone; a backup is kept
           in the cloud only so you can get it back if you lose the device.
+        </p>
+      </div>
+
+      <div className="about-block">
+        <h4>Your data</h4>
+        <p>
+          No ads, no analytics, no tracking. An email address is optional and only ever used to send
+          you a sign-in code so you can get your tally back on a new phone.
+        </p>
+        {/* Opened in the system browser rather than the webview: an in-app
+            browser showing a privacy policy looks like part of the app, and
+            people should be able to see the real address it came from. */}
+        <p className="about-links">
+          <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">
+            Privacy policy
+          </a>
+          <span aria-hidden="true"> · </span>
+          <a href={DELETE_URL} target="_blank" rel="noopener noreferrer">
+            Delete your data
+          </a>
         </p>
       </div>
 

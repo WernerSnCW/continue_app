@@ -1606,6 +1606,16 @@ body:has(.timer-bar) .screen {
 .about-block strong { color: var(--text); }
 .about-fine { font-size: 11px !important; color: var(--text-faint) !important; }
 
+/* Underlined and in the accent colour so these read as links rather than as
+   more body copy — Play expects the privacy policy to be findable, not buried. */
+.about-links { margin-top: 10px !important; }
+.about-links a {
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.about-links span { color: var(--text-faint); }
+
 /* --- permanent delete ---------------------------------------------------------
    Deliberately quieter than archiving until it's chosen, then loud once it is.
    An always-red button next to a recoverable one trains people to ignore red. */
