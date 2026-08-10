@@ -1,5 +1,33 @@
 apply plugin: 'com.android.application'
 
+/*
+ * Release signing.
+ *
+ * The key and its passwords live outside the repo and are read from
+ * android/keystore.properties, which is gitignored. Nothing secret is in this
+ * file, so it stays committed and the build is reproducible for anyone holding
+ * the key. Environment variables take precedence so CI can supply them without
+ * a file on disk.
+ *
+ * Absent config is not an error: debug builds, `pnpm check` and a fresh clone
+ * all have to work without the key. Only a release build needs it, and
+ * `validateReleaseSigning` below fails that case loudly rather than letting
+ * Gradle quietly fall back to the debug key — an APK signed with the debug key
+ * is one Play will reject after you have waited for the upload.
+ */
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
+def signingValue = { String envName, String propName ->
+    System.getenv(envName) ?: keystoreProperties.getProperty(propName)
+}
+
+def storeFilePath = signingValue('CONTINUE_KEYSTORE_FILE', 'storeFile')
+def hasSigningConfig = storeFilePath != null && !storeFilePath.trim().isEmpty()
+
 android {
     namespace = "io.quietfoundry.continueapp"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,12 +44,58 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasSigningConfig) {
+                // Resolved against the android/ directory, so a relative path in
+                // keystore.properties means "next to that file" rather than
+                // something that depends on where gradle was invoked from.
+                storeFile rootProject.file(storeFilePath)
+                storePassword signingValue('CONTINUE_KEYSTORE_PASSWORD', 'storePassword')
+                keyAlias signingValue('CONTINUE_KEY_ALIAS', 'keyAlias')
+                keyPassword signingValue('CONTINUE_KEY_PASSWORD', 'keyPassword')
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig hasSigningConfig ? signingConfigs.release : null
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+}
+
+/*
+ * Refuses to produce an unsigned or debug-signed release artifact.
+ *
+ * Without this, a missing keystore.properties yields a build that succeeds and
+ * an artifact Play rejects — the kind of failure you discover after the upload,
+ * not during the build.
+ */
+tasks.register('validateReleaseSigning') {
+    doLast {
+        if (!hasSigningConfig) {
+            throw new GradleException(
+                'Release signing is not configured.\n' +
+                '  Create apps/mobile/android/keystore.properties with:\n' +
+                '    storeFile=../../../keys/continue-upload.jks\n' +
+                '    storePassword=...\n' +
+                '    keyAlias=upload\n' +
+                '    keyPassword=...\n' +
+                '  or set CONTINUE_KEYSTORE_FILE / CONTINUE_KEYSTORE_PASSWORD /\n' +
+                '  CONTINUE_KEY_ALIAS / CONTINUE_KEY_PASSWORD in the environment.\n' +
+                '  See docs/RELEASE.md.')
+        }
+        def resolved = rootProject.file(storeFilePath)
+        if (!resolved.exists()) {
+            throw new GradleException("Keystore not found at ${resolved.absolutePath}")
+        }
+    }
+}
+
+tasks.matching { it.name == 'bundleRelease' || it.name == 'assembleRelease' }.configureEach {
+    dependsOn 'validateReleaseSigning'
 }
 
 repositories {

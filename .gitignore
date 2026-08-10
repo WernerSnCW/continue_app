@@ -48,3 +48,10 @@ pnpm-debug.log*
 
 # Ad-hoc safety copies of cloud backups — personal data, never committed
 *.backup.json
+
+# Signing material. Also ignored in apps/mobile/android/.gitignore; repeated at
+# the root so a keystore dropped anywhere in the tree is caught, not just under
+# the native project.
+*.jks
+*.keystore
+keystore.properties

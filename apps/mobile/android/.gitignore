@@ -52,10 +52,16 @@ captures/
 # Comment next line if keeping position of elements in Navigation Editor is relevant for you
 .idea/navEditor.xml
 
-# Keystore files
-# Uncomment the following lines if you do not want to check your keystore files in.
-#*.jks
-#*.keystore
+# Keystore files.
+#
+# Uncommented from the Capacitor template default, which leaves these checked
+# in. The upload key must never reach the repo: anyone holding it can sign a
+# build that Play will accept as ours. It lives outside the tree entirely and is
+# pointed at by keystore.properties, which is ignored below for the same reason
+# — it carries the passwords.
+*.jks
+*.keystore
+keystore.properties
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
