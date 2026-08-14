@@ -90,6 +90,26 @@ rejects *after* the upload rather than during the build.
 
 Debug builds need none of this and are unaffected.
 
+## Test builds
+
+Play Billing cannot run outside Play, so paid features are unreachable on a
+device unless billing is mocked. A release build pins the mock off, which also
+makes the paid tier untestable — deliberately, but it means "just build it and
+install it" is the wrong move when testing anything behind the unlock.
+
+```
+pnpm --filter @continue/mobile build:testing
+pnpm --filter @continue/mobile cap:sync
+cd apps/mobile/android && ./gradlew installDebug
+```
+
+That build carries mocked purchases and the entitlement panel, so the unlock can
+be granted and revoked freely. Vite loads `.env` then `.env.testing` for this
+mode, so `.env.production` is never read — and a release build never reads
+`.env.testing`, so the mock cannot escape into one.
+
+Use plain `build` (not `build:testing`) for anything destined for Play.
+
 ## Before uploading
 
 - Confirm `VITE_MOCK_PURCHASE` is **not** `1` in `apps/mobile/.env`, or the
