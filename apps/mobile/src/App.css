@@ -982,14 +982,48 @@
   margin-bottom: 12px;
 }
 .sa-count { font-size: 10.5px; color: var(--text-faint); }
-.sa-edit {
+
+/* --- list management ------------------------------------------------------- */
+
+/* Two sibling buttons, never one nested in the other: nested interactive
+   elements are invalid HTML and have already caused a bug here. */
+.list-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.lr-main {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: linear-gradient(160deg, var(--card-2), var(--card));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 12px;
+}
+.lr-main:active { background: var(--card-2); }
+.lr-name {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lr-sub { display: block; font-size: 10.5px; color: var(--text-faint); margin-top: 3px; }
+.lr-edit {
+  flex: 0 0 auto;
   font-size: 11px;
   color: var(--text-dim);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 6px 11px;
   background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 14px;
 }
+
+/* Spans the row on its own, so it has room for a count and a hint. */
+.nav-tile.wide { flex: 1; }
 
 /* Shown in place of the score when a set is too small to score honestly. */
 .dc-rate { font-size: 12px; color: var(--text-dim); }

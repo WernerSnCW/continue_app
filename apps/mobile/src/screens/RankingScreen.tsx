@@ -20,8 +20,8 @@ interface Props {
   /** Null means the computed "All games" view rather than a stored list. */
   listId: string | null;
   onSelectList: (listId: string | null) => void;
-  onNewList: () => void;
-  onEditList: (listId: string) => void;
+  /** Leaves for the management screen; nothing is edited from here. */
+  onManageLists: () => void;
   onOpenPaywall: () => void;
 }
 
@@ -31,8 +31,7 @@ export function RankingScreen({
   onOpenGame,
   listId,
   onSelectList,
-  onNewList,
-  onEditList,
+  onManageLists,
   onOpenPaywall,
 }: Props) {
   const unlimited = state.entitlement.unlimitedGames;
@@ -113,14 +112,16 @@ export function RankingScreen({
               {l.name}
             </button>
           ))}
+          {/* Navigation, not management: this screen is for reading a ranking,
+              and editing from here only ever acted on the selected chip. */}
           <button
             className="scope-chip add"
             onClick={() => {
               playClick();
-              onNewList();
+              onManageLists();
             }}
           >
-            + List
+            Manage
           </button>
         </div>
       ) : (
@@ -144,15 +145,6 @@ export function RankingScreen({
           <span className="sa-count">
             {scopeGames.length} game{scopeGames.length === 1 ? '' : 's'} in this list
           </span>
-          <button
-            className="sa-edit"
-            onClick={() => {
-              playClick();
-              onEditList(selected.id);
-            }}
-          >
-            Edit list
-          </button>
         </div>
       )}
 

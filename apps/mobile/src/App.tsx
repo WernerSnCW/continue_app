@@ -17,6 +17,7 @@ import { AboutScreen } from './screens/AboutScreen';
 import { BackupScreen } from './screens/BackupScreen';
 import { GamesListScreen } from './screens/GamesListScreen';
 import { ListEditScreen } from './screens/ListEditScreen';
+import { ListsScreen } from './screens/ListsScreen';
 import {
   activeRun,
   adoptSnapshot,
@@ -53,6 +54,7 @@ type View =
   | { name: 'backup' }
   | { name: 'games' }
   | { name: 'about' }
+  | { name: 'lists' }
   | { name: 'list-edit'; listId: string }
   /** `from` so Back returns where you came from, not always the counter. */
   | { name: 'stats'; gameId: string; from: 'counter' | 'ranking' }
@@ -250,7 +252,6 @@ export default function App() {
   const createList = () => {
     const list = newList('New list');
     setState((s) => ({ ...s, lists: [...s.lists, list] }));
-    setRankingListId(list.id);
     setView({ name: 'list-edit', listId: list.id });
   };
 
@@ -560,9 +561,21 @@ export default function App() {
             onOpenGame={(gameId) => setView({ name: 'stats', gameId, from: 'ranking' })}
             listId={rankingListId}
             onSelectList={setRankingListId}
-            onNewList={createList}
-            onEditList={(listId) => setView({ name: 'list-edit', listId })}
+            onManageLists={() => setView({ name: 'lists' })}
             onOpenPaywall={() => setView({ name: 'paywall' })}
+          />
+        );
+      case 'lists':
+        return (
+          <ListsScreen
+            state={state}
+            onBack={() => setView({ name: 'home' })}
+            onOpenList={(listId) => {
+              setRankingListId(listId);
+              setView({ name: 'ranking' });
+            }}
+            onEditList={(listId) => setView({ name: 'list-edit', listId })}
+            onNewList={createList}
           />
         );
       case 'list-edit':
@@ -570,7 +583,7 @@ export default function App() {
           <ListEditScreen
             state={state}
             listId={view.listId}
-            onBack={() => setView({ name: 'ranking' })}
+            onBack={() => setView({ name: 'lists' })}
             onRename={(name) => setState((s) => renameList(s, view.listId, name))}
             onToggleGame={(gameId, inList) =>
               setState((s) =>
@@ -581,9 +594,10 @@ export default function App() {
             }
             onDelete={() => {
               setState((s) => ({ ...s, lists: s.lists.filter((l) => l.id !== view.listId) }));
-              // The ranking was scoped to the list that just stopped existing.
-              setRankingListId(null);
-              setView({ name: 'ranking' });
+              // The ranking may have been scoped to the list that just
+              // stopped existing.
+              setRankingListId((cur) => (cur === view.listId ? null : cur));
+              setView({ name: 'lists' });
             }}
           />
         );
@@ -612,6 +626,7 @@ export default function App() {
             backup={backup}
             onOpenBackup={() => setView({ name: 'backup' })}
             onOpenAbout={() => setView({ name: 'about' })}
+            onOpenLists={() => setView({ name: 'lists' })}
           />
         );
     }

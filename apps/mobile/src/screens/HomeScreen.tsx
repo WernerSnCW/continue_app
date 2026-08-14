@@ -28,6 +28,7 @@ interface Props {
   onRevertUnlock: () => void;
   onOpenBackup: () => void;
   onOpenAbout: () => void;
+  onOpenLists: () => void;
   backup: {
     state: string;
     lastSavedAt: number | null;
@@ -109,6 +110,7 @@ export function HomeScreen({
   onRevertUnlock,
   onOpenBackup,
   onOpenAbout,
+  onOpenLists,
   backup,
   onDeath,
   onStartTimer,
@@ -121,6 +123,7 @@ export function HomeScreen({
 
   const games = visibleGames(state);
   const unlimited = state.entitlement.unlimitedGames;
+  const lists = state.lists;
   const featured = lastPlayedGame(state);
   const run = featured ? activeRun(state, featured.id) : undefined;
   const timing = !!run && state.timer?.runId === run.id;
@@ -415,6 +418,33 @@ export function HomeScreen({
           <span className="nt-hint">search IGDB</span>
         </button>
       </div>
+
+      {/* Only once unlocked. Lists are hidden entirely on the free tier, so a
+          locked tile here would advertise a feature the ranking screen already
+          upsells, on the one screen that should stay uncluttered. */}
+      {unlimited && (
+        <div className="tile-row">
+          <button
+            className="nav-tile wide"
+            onClick={() => {
+              playClick();
+              onOpenLists();
+            }}
+          >
+            <span className="nt-chev" aria-hidden="true">
+              ›
+            </span>
+            <span className="nt-n">{lists.length}</span>
+            <span className="nt-l">
+              {lists.length === 1 ? 'list' : 'lists'}
+              {lists.length === 0 ? ' yet' : ''}
+            </span>
+            <span className="nt-hint">
+              {lists.length === 0 ? 'group games to compare them' : 'manage and compare'}
+            </span>
+          </button>
+        </div>
+      )}
 
       <div className="tile-grid summary">
         <div className="tile">
