@@ -924,37 +924,39 @@
 
 /* --- ranking scope (lists) ------------------------------------------------- */
 
-/* Horizontal scroll rather than wrap: the chip row must not grow taller as
-   lists are added and push the ranking itself off the first screen. */
-.scope-chips {
+/* One row whatever the list count, opening a sheet that scrolls vertically.
+   A chip strip pushed options off the right edge and gave no sense of how many
+   there were — the problem got worse with every list added. */
+.scope-select {
   display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  margin-bottom: 12px;
-  scrollbar-width: none;
-}
-.scope-chips::-webkit-scrollbar { display: none; }
-.scope-chip {
-  flex: 0 0 auto;
-  font-size: 11px;
-  padding: 7px 12px;
-  border-radius: 999px;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: linear-gradient(160deg, var(--card-2), var(--card));
   border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--text-dim);
-  white-space: nowrap;
-  max-width: 11rem;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.ss-label {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.ss-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.scope-chip.on {
-  border-color: var(--ember);
-  background: linear-gradient(180deg, rgba(255, 90, 54, 0.18), var(--card));
-  color: var(--text);
-  font-weight: 700;
-}
-.scope-chip.add { color: var(--text-faint); border-style: dashed; }
+.ss-chev { flex: 0 0 auto; color: var(--text-faint); font-size: 11px; }
 
 .scope-upsell {
   display: block;
@@ -1898,6 +1900,18 @@ body:has(.timer-bar) .screen {
 }
 .sheet-row:active { background: var(--card-2); }
 .sheet-row.danger { border-color: rgba(255, 90, 54, 0.4); }
+/* The currently shown scope, so the sheet answers "which am I on?" without
+   having to remember what the row behind it said. */
+.sheet-row.picked {
+  border-color: var(--ember);
+  background: linear-gradient(180deg, rgba(255, 90, 54, 0.14), var(--card));
+}
+.sheet-empty {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-faint);
+  margin: 0 2px 10px;
+}
 .sr-name { display: block; font-size: 13px; font-weight: 600; margin-bottom: 3px; }
 .sheet-row.danger .sr-name { color: var(--ember); }
 .sr-note { display: block; font-size: 10.5px; line-height: 1.5; color: var(--text-faint); }

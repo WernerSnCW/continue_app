@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BarsIcon } from '../components/icons';
 import { HelpTip } from '../components/HelpTip';
 import { playClick } from '../lib/sound';
@@ -34,6 +35,7 @@ export function RankingScreen({
   onManageLists,
   onOpenPaywall,
 }: Props) {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const unlimited = state.entitlement.unlimitedGames;
   // Lists are a paid feature, so an unlock that lapses simply stops offering
   // them. Nothing is deleted, and re-unlocking brings them straight back.
@@ -87,43 +89,26 @@ export function RankingScreen({
       </div>
 
       {/* Scope selector. A ranking is only as meaningful as the set it compares
-          against, so which set is being used has to be visible and switchable
-          right here rather than buried in a menu. */}
+          against, so the current scope is always on screen — but as one row
+          that opens a sheet, not a chip strip. Chips scroll options off the
+          edge and give no sense of how many there are, which gets worse with
+          every list; a sheet scrolls vertically and stays one row tall
+          however many exist. */}
       {unlimited ? (
-        <div className="scope-chips">
-          <button
-            className={`scope-chip${selected ? '' : ' on'}`}
-            onClick={() => {
-              playClick();
-              onSelectList(null);
-            }}
-          >
-            All games
-          </button>
-          {lists.map((l) => (
-            <button
-              key={l.id}
-              className={`scope-chip${selected?.id === l.id ? ' on' : ''}`}
-              onClick={() => {
-                playClick();
-                onSelectList(l.id);
-              }}
-            >
-              {l.name}
-            </button>
-          ))}
-          {/* Navigation, not management: this screen is for reading a ranking,
-              and editing from here only ever acted on the selected chip. */}
-          <button
-            className="scope-chip add"
-            onClick={() => {
-              playClick();
-              onManageLists();
-            }}
-          >
-            Manage
-          </button>
-        </div>
+        <button
+          className="scope-select"
+          onClick={() => {
+            playClick();
+            setPickerOpen(true);
+          }}
+          aria-haspopup="dialog"
+        >
+          <span className="ss-label">Ranking</span>
+          <span className="ss-value">{selected ? selected.name : 'All games'}</span>
+          <span className="ss-chev" aria-hidden="true">
+            ▾
+          </span>
+        </button>
       ) : (
         <button
           className="scope-upsell"
@@ -267,6 +252,77 @@ export function RankingScreen({
           <p className="ghost-note" style={{ marginTop: 'auto' }}>
             Ranked against your own games only — scores shift as you log more sessions.
           </p>
+        </>
+      )}
+
+      {pickerOpen && (
+        <>
+          <button
+            className="sheet-scrim"
+            onClick={() => setPickerOpen(false)}
+            aria-label="Close"
+          />
+          <div className="sheet" role="dialog" aria-label="Choose a ranking">
+            <div className="sheet-title">Rank within</div>
+
+            <button
+              className={`sheet-row${selected ? '' : ' picked'}`}
+              onClick={() => {
+                playClick();
+                onSelectList(null);
+                setPickerOpen(false);
+              }}
+            >
+              <span className="sr-name">All games</span>
+              <span className="sr-note">
+                {visibleGames(state).length} tracked
+                {selected ? '' : ' · showing'}
+              </span>
+            </button>
+
+            {lists.map((l) => {
+              const n = gamesInList(state, l.id).length;
+              return (
+                <button
+                  key={l.id}
+                  className={`sheet-row${selected?.id === l.id ? ' picked' : ''}`}
+                  onClick={() => {
+                    playClick();
+                    onSelectList(l.id);
+                    setPickerOpen(false);
+                  }}
+                >
+                  <span className="sr-name">{l.name}</span>
+                  <span className="sr-note">
+                    {n} game{n === 1 ? '' : 's'}
+                    {selected?.id === l.id ? ' · showing' : ''}
+                  </span>
+                </button>
+              );
+            })}
+
+            {lists.length === 0 && (
+              <p className="sheet-empty">
+                No lists yet. Make one to rank a group of games against each other.
+              </p>
+            )}
+
+            <button
+              className="sheet-row"
+              onClick={() => {
+                playClick();
+                setPickerOpen(false);
+                onManageLists();
+              }}
+            >
+              <span className="sr-name">Manage lists</span>
+              <span className="sr-note">create, rename, add games</span>
+            </button>
+
+            <button className="sheet-cancel" onClick={() => setPickerOpen(false)}>
+              Close
+            </button>
+          </div>
         </>
       )}
     </div>
