@@ -132,6 +132,27 @@ export interface GlobalAverage {
   updatedAt: IsoTimestamp;
 }
 
+/**
+ * A user-made grouping of games, used to scope the difficulty ranking.
+ *
+ * Replaces the idea of ranking by IGDB genre. Genre metadata answers "what
+ * shelf is this on"; the ranking needs "which of my games are fairly
+ * comparable", and only the player can answer that — they might keep Elden Ring
+ * out of their Souls list because they played it co-op, or put The Last of Us
+ * beside RE2 because that is how they think about it. No metadata infers either.
+ *
+ * "All games" is deliberately not one of these. It is computed from what is
+ * tracked, so nothing has to remember to keep a stored list in step with every
+ * add, archive, swap and delete.
+ */
+export interface GameList {
+  id: string;
+  name: string;
+  /** Game ids, in the order the user added them. */
+  gameIds: string[];
+  createdAt: IsoTimestamp;
+}
+
 /** Local entitlement state — the $1.99 one-time unlock. */
 export interface Entitlement {
   unlimitedGames: boolean;

@@ -3,7 +3,15 @@
  * Preferences when the native wrapper exists, since everything goes through
  * load()/save().
  */
-import type { DeathEntry, Entitlement, Game, Run, RunType, Session } from '@continue/shared';
+import type {
+  DeathEntry,
+  Entitlement,
+  Game,
+  GameList,
+  Run,
+  RunType,
+  Session,
+} from '@continue/shared';
 
 const KEY = 'continue.state.v1';
 
@@ -32,6 +40,8 @@ export interface AppState {
   runs: Run[];
   deaths: DeathEntry[];
   sessions: Session[];
+  /** User-made groupings used to scope the ranking. Paid feature. */
+  lists: GameList[];
   entitlement: Entitlement;
   timer: RunningTimer | null;
 }
@@ -41,6 +51,7 @@ export const emptyState = (): AppState => ({
   runs: [],
   deaths: [],
   sessions: [],
+  lists: [],
   entitlement: { unlimitedGames: false, purchasedAt: null },
   timer: null,
 });
@@ -65,6 +76,10 @@ function migrate(raw: AppState): AppState {
       sessionId: d.sessionId ?? null,
     })),
     sessions: raw.sessions ?? [],
+    // Lists postdate the first backups, and a restored snapshot from an older
+    // build has none. Membership is filtered on read rather than repaired here,
+    // so a list that mentions a game deleted on another device is harmless.
+    lists: (raw.lists ?? []).map((l) => ({ ...l, gameIds: l.gameIds ?? [] })),
     // A timer persisted before sessions existed has no id; give it one so the
     // stretch still in progress gets recorded when it stops.
     timer: raw.timer ? { ...raw.timer, sessionId: raw.timer.sessionId ?? id() } : null,
@@ -151,6 +166,10 @@ export function newGame(input: Pick<Game, 'igdbId' | 'name' | 'coverUrl'>): Game
   return { id: id(), platform: null, addedAt: now(), archived: false, ...input };
 }
 
+export function newList(name: string): GameList {
+  return { id: id(), name: name.trim(), gameIds: [], createdAt: now() };
+}
+
 export function newDeath(
   gameId: string,
   runId: string,
@@ -184,6 +203,62 @@ export const archivedGames = (s: AppState): Game[] => s.games.filter((g) => g.ar
  * game would simply stay on the home screen.
  */
 export const visibleGames = (s: AppState): Game[] => activeGames(s);
+
+// --- lists -----------------------------------------------------------------
+
+/**
+ * Games in a list, in the order the user added them.
+ *
+ * Membership is resolved through `visibleGames`, so a list never surfaces an
+ * archived game or an id left behind by a game deleted on another device. That
+ * is why nothing has to go back and repair stored lists: a stale id is simply
+ * skipped, and the alternative — rewriting every list on every restore — would
+ * let one device's deletion silently edit another's lists.
+ */
+export function gamesInList(s: AppState, listId: string): Game[] {
+  const list = s.lists.find((l) => l.id === listId);
+  if (!list) return [];
+  const visible = new Map(visibleGames(s).map((g) => [g.id, g]));
+  return list.gameIds.map((gid) => visible.get(gid)).filter((g): g is Game => g !== undefined);
+}
+
+/** Lists a game belongs to. Used to show membership on the game's own screen. */
+export const listsForGame = (s: AppState, gameId: string): GameList[] =>
+  s.lists.filter((l) => l.gameIds.includes(gameId));
+
+export const addGameToList = (s: AppState, listId: string, gameId: string): AppState => ({
+  ...s,
+  lists: s.lists.map((l) =>
+    // Guard against a double-add producing a duplicate row in the list view.
+    l.id === listId && !l.gameIds.includes(gameId)
+      ? { ...l, gameIds: [...l.gameIds, gameId] }
+      : l,
+  ),
+});
+
+export const removeGameFromList = (s: AppState, listId: string, gameId: string): AppState => ({
+  ...s,
+  lists: s.lists.map((l) =>
+    l.id === listId ? { ...l, gameIds: l.gameIds.filter((g) => g !== gameId) } : l,
+  ),
+});
+
+export const renameList = (s: AppState, listId: string, name: string): AppState => ({
+  ...s,
+  lists: s.lists.map((l) => (l.id === listId ? { ...l, name: name.trim() } : l)),
+});
+
+/**
+ * Drops a game from every list. Called when a game is permanently deleted, for
+ * the same reason its deaths and sessions are: a dangling id is a game that
+ * still occupies a slot in a list the user is looking at.
+ */
+export const purgeGameFromLists = (s: AppState, gameId: string): AppState => ({
+  ...s,
+  lists: s.lists.map((l) =>
+    l.gameIds.includes(gameId) ? { ...l, gameIds: l.gameIds.filter((g) => g !== gameId) } : l,
+  ),
+});
 
 /** Only unarchived games consume a free-tier slot. */
 export const usedSlots = (s: AppState): number => activeGames(s).length;

@@ -4,7 +4,13 @@
  * bad session drag every other game's score with it.
  */
 import { describe, expect, it } from 'vitest';
-import { formatHours, isRankable, rankGames, type RankableGame } from './ranking';
+import {
+  formatHours,
+  isRankable,
+  MIN_SCORED_GAMES,
+  rankGames,
+  type RankableGame,
+} from './ranking';
 
 const g = (gameId: string, deaths: number, playedSeconds: number): RankableGame => ({
   gameId,
@@ -29,15 +35,49 @@ describe('rankGames', () => {
     expect(unranked.map((r) => r.gameId)).toEqual(['untimed']);
   });
 
-  it('scores a lone game at the midpoint, not the top', () => {
-    // Nothing to compare against yet, so a full 10 would be a lie.
-    expect(rankGames([g('only', 50, 3600)]).ranked[0].score).toBe(5.5);
+  it('withholds scores below the threshold, but still orders', () => {
+    // Two games always come out 7.75 and 3.25 whether one kills you twice as
+    // often or a hundred times as often. The order is real; the number is not.
+    const { ranked, scored } = rankGames([g('hard', 30, 3600), g('easy', 1, 3600)]);
+    expect(scored).toBe(false);
+    expect(ranked.map((r) => r.gameId)).toEqual(['hard', 'easy']);
+    expect(ranked.map((r) => r.score)).toEqual([null, null]);
+    expect(ranked.map((r) => r.tier)).toEqual([null, null]);
   });
 
-  it('spreads three games without pinning either end of the scale', () => {
-    const { ranked } = rankGames([g('easy', 1, 3600), g('hard', 30, 3600), g('mid', 10, 3600)]);
-    expect(ranked.map((r) => r.gameId)).toEqual(['hard', 'mid', 'easy']);
-    expect(ranked.map((r) => r.score)).toEqual([8.5, 5.5, 2.5]);
+  it.each([1, 2, 3])('does not score a set of %i', (n) => {
+    const games = Array.from({ length: n }, (_, i) => g(`g${i}`, (i + 1) * 5, 3600));
+    const r = rankGames(games);
+    expect(r.scored).toBe(false);
+    expect(r.ranked.every((x) => x.score === null)).toBe(true);
+  });
+
+  it(`scores from ${MIN_SCORED_GAMES} rankable games up`, () => {
+    const games = Array.from({ length: MIN_SCORED_GAMES }, (_, i) => g(`g${i}`, (i + 1) * 5, 3600));
+    const r = rankGames(games);
+    expect(r.scored).toBe(true);
+    expect(r.ranked.every((x) => typeof x.score === 'number')).toBe(true);
+  });
+
+  it('spreads four games without pinning either end of the scale', () => {
+    const { ranked } = rankGames([
+      g('easy', 1, 3600),
+      g('hard', 40, 3600),
+      g('mid', 10, 3600),
+      g('midder', 20, 3600),
+    ]);
+    expect(ranked.map((r) => r.gameId)).toEqual(['hard', 'midder', 'mid', 'easy']);
+    // Never 10 and never 1: the plotting position keeps room at both ends.
+    expect(ranked[0].score).toBeLessThan(10);
+    expect(ranked[3].score).toBeGreaterThan(1);
+  });
+
+  it('counts only rankable games toward the threshold', () => {
+    // Four games, but two have no logged time. Padding a list with untracked
+    // games must not switch scoring on.
+    const r = rankGames([g('a', 5, 3600), g('b', 9, 3600), g('c', 3, 0), g('d', 7, 0)]);
+    expect(r.unranked).toHaveLength(2);
+    expect(r.scored).toBe(false);
   });
 
   it('orders by rate, not by raw death count', () => {
@@ -49,32 +89,42 @@ describe('rankGames', () => {
   it('gives equal rates the same score', () => {
     // Two games at an identical rate scoring differently reads as a bug to the
     // user, whichever way the sort happened to fall.
-    const { ranked } = rankGames([g('a', 10, 3600), g('b', 10, 3600), g('c', 1, 3600)]);
-    expect(ranked[0].score).toBe(ranked[1].score);
-    expect(ranked[2].score).toBeLessThan(ranked[0].score);
+    const { ranked } = rankGames([
+      g('a', 10, 3600),
+      g('b', 10, 3600),
+      g('c', 1, 3600),
+      g('d', 30, 3600),
+    ]);
+    const a = ranked.find((r) => r.gameId === 'a')!;
+    const b = ranked.find((r) => r.gameId === 'b')!;
+    const c = ranked.find((r) => r.gameId === 'c')!;
+    expect(a.score).toBe(b.score);
+    expect(c.score!).toBeLessThan(a.score!);
   });
 
   it('is not dragged by an outlier', () => {
     // The whole reason for rank-based scoring: adding one absurd game must not
-    // move the others.
-    const without = rankGames([g('a', 30, 3600), g('b', 10, 3600), g('c', 1, 3600)]);
-    const withOutlier = rankGames([
-      g('a', 30, 3600),
-      g('b', 10, 3600),
-      g('c', 1, 3600),
-      g('outlier', 600, 600),
-    ]);
-    // 'a' stays second-from-top and keeps a mid-to-high score rather than being
-    // compressed toward the floor.
-    expect(withOutlier.ranked[1].gameId).toBe('a');
-    expect(withOutlier.ranked[1].score).toBeGreaterThan(5);
+    // compress the others toward the floor.
+    const base = [g('a', 30, 3600), g('b', 10, 3600), g('c', 4, 3600), g('d', 1, 3600)];
+    const without = rankGames(base);
+    const withOutlier = rankGames([...base, g('outlier', 600, 600)]);
+
     expect(without.ranked[0].gameId).toBe('a');
+    // 'a' slips to second but keeps a high score rather than being squashed.
+    expect(withOutlier.ranked[1].gameId).toBe('a');
+    expect(withOutlier.ranked[1].score!).toBeGreaterThan(6);
   });
 
   it('reports no easiest game when only one is ranked', () => {
     const r = rankGames([g('only', 5, 3600)]);
     expect(r.hardest?.gameId).toBe('only');
     expect(r.easiest).toBe(null);
+  });
+
+  it('reports scored false for an empty set rather than throwing', () => {
+    const r = rankGames([]);
+    expect(r.scored).toBe(false);
+    expect(r.ranked).toEqual([]);
   });
 
   it('has no hardest game when nothing is rankable', () => {

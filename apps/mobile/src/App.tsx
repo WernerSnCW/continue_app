@@ -16,6 +16,7 @@ import { useBackup } from './lib/useBackup';
 import { AboutScreen } from './screens/AboutScreen';
 import { BackupScreen } from './screens/BackupScreen';
 import { GamesListScreen } from './screens/GamesListScreen';
+import { ListEditScreen } from './screens/ListEditScreen';
 import {
   activeRun,
   adoptSnapshot,
@@ -26,11 +27,16 @@ import {
   historyForIgdbId,
   lastPlayedGame,
   latestRun,
+  purgeGameFromLists,
+  removeGameFromList,
+  renameList,
+  addGameToList,
   timedGame,
   emptyState,
   load,
   newDeath,
   newGame,
+  newList,
   newRun,
   save,
   usedSlots,
@@ -47,6 +53,7 @@ type View =
   | { name: 'backup' }
   | { name: 'games' }
   | { name: 'about' }
+  | { name: 'list-edit'; listId: string }
   /** `from` so Back returns where you came from, not always the counter. */
   | { name: 'stats'; gameId: string; from: 'counter' | 'ranking' }
   | { name: 'archive'; pending: IgdbSearchResult; cycle: number };
@@ -54,6 +61,12 @@ type View =
 export default function App() {
   const [state, setState] = useState<AppState>(load);
   const [view, setView] = useState<View>({ name: 'home' });
+  /**
+   * Which list the ranking is scoped to; null is the computed "All games" view.
+   * Held here rather than in the screen so switching to a list, opening a game
+   * from it and coming back returns to that list instead of resetting.
+   */
+  const [rankingListId, setRankingListId] = useState<string | null>(null);
 
   // Sticky once set. A failing write usually keeps failing, and an alert that
   // flickers off on the next successful render is worse than none — the point
@@ -230,6 +243,17 @@ export default function App() {
     );
   };
 
+  /**
+   * Creates a list and drops straight into editing it. Naming a list before
+   * knowing what goes in it is the wrong order — the editor has both.
+   */
+  const createList = () => {
+    const list = newList('New list');
+    setState((s) => ({ ...s, lists: [...s.lists, list] }));
+    setRankingListId(list.id);
+    setView({ name: 'list-edit', listId: list.id });
+  };
+
   const deleteGame = (gameId: string) => {
     snapshotBeforeDelete('a game');
     setState((prev) => {
@@ -237,7 +261,9 @@ export default function App() {
       const s = prev.timer?.gameId === gameId ? { ...prev, timer: null } : prev;
       const runIds = new Set(s.runs.filter((r) => r.gameId === gameId).map((r) => r.id));
       return {
-        ...s,
+        // Lists too, or a deleted game leaves a hole in a list the user is
+        // looking at — same reason its deaths and sessions go below.
+        ...purgeGameFromLists(s, gameId),
         games: s.games.filter((g) => g.id !== gameId),
         runs: s.runs.filter((r) => r.gameId !== gameId),
         // Match on both keys: a death is orphaned if either points at the game.
@@ -532,6 +558,33 @@ export default function App() {
             state={state}
             onBack={() => setView({ name: 'home' })}
             onOpenGame={(gameId) => setView({ name: 'stats', gameId, from: 'ranking' })}
+            listId={rankingListId}
+            onSelectList={setRankingListId}
+            onNewList={createList}
+            onEditList={(listId) => setView({ name: 'list-edit', listId })}
+            onOpenPaywall={() => setView({ name: 'paywall' })}
+          />
+        );
+      case 'list-edit':
+        return (
+          <ListEditScreen
+            state={state}
+            listId={view.listId}
+            onBack={() => setView({ name: 'ranking' })}
+            onRename={(name) => setState((s) => renameList(s, view.listId, name))}
+            onToggleGame={(gameId, inList) =>
+              setState((s) =>
+                inList
+                  ? removeGameFromList(s, view.listId, gameId)
+                  : addGameToList(s, view.listId, gameId),
+              )
+            }
+            onDelete={() => {
+              setState((s) => ({ ...s, lists: s.lists.filter((l) => l.id !== view.listId) }));
+              // The ranking was scoped to the list that just stopped existing.
+              setRankingListId(null);
+              setView({ name: 'ranking' });
+            }}
           />
         );
       case 'archive':

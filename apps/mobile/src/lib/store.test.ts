@@ -8,11 +8,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   activeRun,
+  addGameToList,
   adoptSnapshot,
   archivedRunsForGame,
   deathsForGame,
   emptyState,
   enforceGameLimit,
+  gamesInList,
+  listsForGame,
+  purgeGameFromLists,
+  removeGameFromList,
+  renameList,
   lastDeathAtForRun,
   lastPlayedGame,
   lifetimeTotals,
@@ -314,6 +320,101 @@ describe('unsessionedSecondsForRun', () => {
       ],
     };
     expect(unsessionedSecondsForRun(s, r)).toBe(0);
+  });
+});
+
+describe('lists', () => {
+  const base = (): AppState => ({
+    ...emptyState(),
+    games: [game('g1'), game('g2'), game('g3')],
+    lists: [
+      { id: 'l1', name: 'Souls-likes', gameIds: ['g1', 'g3'], createdAt: '2026-01-01T00:00:00.000Z' },
+    ],
+  });
+
+  it('returns members in the order the user added them', () => {
+    // Not alphabetical and not library order: the list is the user's own
+    // arrangement, and reordering it under them would be surprising.
+    expect(gamesInList(base(), 'l1').map((g) => g.id)).toEqual(['g1', 'g3']);
+  });
+
+  it('is empty for a list that does not exist', () => {
+    expect(gamesInList(base(), 'nope')).toEqual([]);
+  });
+
+  it('skips archived games without editing the list', () => {
+    // A swapped-out game should drop out of the ranking, but rewriting the
+    // stored list would lose the user's grouping when they unlock again.
+    const s = base();
+    s.games = s.games.map((g) => (g.id === 'g3' ? { ...g, archived: true } : g));
+    expect(gamesInList(s, 'l1').map((g) => g.id)).toEqual(['g1']);
+    expect(s.lists[0].gameIds).toEqual(['g1', 'g3']);
+  });
+
+  it('skips an id with no matching game rather than throwing', () => {
+    // A game deleted on another device leaves its id behind in a restored list.
+    const s = base();
+    s.lists = [{ ...s.lists[0], gameIds: ['g1', 'ghost', 'g3'] }];
+    expect(gamesInList(s, 'l1').map((g) => g.id)).toEqual(['g1', 'g3']);
+  });
+
+  it('adds and removes membership', () => {
+    let s = addGameToList(base(), 'l1', 'g2');
+    expect(gamesInList(s, 'l1').map((g) => g.id)).toEqual(['g1', 'g3', 'g2']);
+    s = removeGameFromList(s, 'l1', 'g3');
+    expect(gamesInList(s, 'l1').map((g) => g.id)).toEqual(['g1', 'g2']);
+  });
+
+  it('never adds the same game twice', () => {
+    // A double tap would otherwise put one game in the ranking twice.
+    const s = addGameToList(addGameToList(base(), 'l1', 'g2'), 'l1', 'g2');
+    expect(s.lists[0].gameIds.filter((id) => id === 'g2')).toHaveLength(1);
+  });
+
+  it('reports which lists a game belongs to', () => {
+    const s = base();
+    s.lists = [...s.lists, { id: 'l2', name: '2019', gameIds: ['g1'], createdAt: 'x' }];
+    expect(listsForGame(s, 'g1').map((l) => l.id)).toEqual(['l1', 'l2']);
+    expect(listsForGame(s, 'g2')).toEqual([]);
+  });
+
+  it('trims whitespace when renaming', () => {
+    expect(renameList(base(), 'l1', '  Horror  ').lists[0].name).toBe('Horror');
+  });
+
+  it('purges a deleted game from every list', () => {
+    // Same reason a delete clears deaths and sessions: a dangling id is a hole
+    // in a list the user is looking at.
+    const s = base();
+    s.lists = [...s.lists, { id: 'l2', name: 'Other', gameIds: ['g1', 'g2'], createdAt: 'x' }];
+    const after = purgeGameFromLists(s, 'g1');
+    expect(after.lists[0].gameIds).toEqual(['g3']);
+    expect(after.lists[1].gameIds).toEqual(['g2']);
+  });
+
+  it('backfills lists when loading a state written before they existed', () => {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({ games: [game('g1')], runs: [], deaths: [] }),
+    );
+    expect(load().lists).toEqual([]);
+  });
+
+  it('accepts a restored list with no gameIds array', () => {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        games: [game('g1')],
+        runs: [],
+        lists: [{ id: 'l1', name: 'Broken', createdAt: 'x' }],
+      }),
+    );
+    expect(load().lists[0].gameIds).toEqual([]);
+  });
+
+  it('carries lists through a restored snapshot', () => {
+    const s = adoptSnapshot({ games: [game('g1')], runs: [], lists: base().lists });
+    expect(s!.lists[0].name).toBe('Souls-likes');
   });
 });
 
