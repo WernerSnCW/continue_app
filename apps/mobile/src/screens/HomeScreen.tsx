@@ -514,7 +514,7 @@ export function HomeScreen({
           }}
         >
           <p className="t1">Free plan: {FREE_TIER_GAME_LIMIT} games</p>
-          <p className="t2">Unlock unlimited games + global average — $1.99 one-time</p>
+          <p className="t2">Unlock unlimited games + your own lists — $1.99 one-time</p>
         </button>
       )}
 

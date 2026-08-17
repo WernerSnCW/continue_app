@@ -123,9 +123,22 @@ export interface GameStats {
   currentRunId: string | null;
 }
 
-/** Community death average for a game, synced down from the API. */
+/**
+ * Community death average for a game.
+ *
+ * NOT IMPLEMENTED. There is no table, no aggregation and no consumer — this
+ * type is the only trace of the feature, kept as a sketch of the shape rather
+ * than because anything reads it. It was advertised on the paywall for a while
+ * and has been removed from there until it exists.
+ *
+ * Two things it must not ship without: a minimum sample size, or the first two
+ * players compare against each other and call it an average; and a privacy
+ * policy update, since feeding a cross-user aggregate is a different disclosure
+ * from holding somebody's own data for them.
+ */
 export interface GlobalAverage {
   igdbId: number;
+  /** Median, not mean: one player tapping 10,000 deaths must not move it. */
   averageDeaths: number;
   /** Number of players contributing to this average. */
   sampleSize: number;

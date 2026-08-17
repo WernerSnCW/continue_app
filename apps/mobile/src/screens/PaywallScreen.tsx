@@ -31,10 +31,22 @@ const FEATURES: readonly { title: string; body: string }[] = [
     body: "Keep each playthrough's count separate, however deep you go.",
   },
   {
-    title: 'Global average',
-    body: 'See how your death count compares to everyone else tracking it.',
+    title: 'Your own lists',
+    body: 'Group games you think of as comparable — horror, souls-likes, whatever — and rank each list on its own.',
   },
 ];
+
+/*
+ * "Global average" used to sit in this list and has been removed. It was never
+ * built: the only trace was an unused type. Advertising it at the point of sale
+ * meant someone could pay, go looking, and find nothing — which is a broken
+ * promise before it is a policy problem.
+ *
+ * It is worth building, and is tracked as post-launch work. Note that it cannot
+ * ship without a privacy policy update: the policy says nothing is shared with
+ * anyone, and feeding a cross-user aggregate changes that disclosure even when
+ * only aggregates are ever exposed.
+ */
 
 export function PaywallScreen({ onBack, onUnlocked, locked }: Props) {
   const [status, setStatus] = useState<'idle' | 'buying' | 'restoring'>('idle');
