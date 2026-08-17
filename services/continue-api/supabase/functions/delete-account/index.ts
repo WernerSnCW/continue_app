@@ -56,6 +56,15 @@ Deno.serve(async (req) => {
     const { error: backupErr } = await admin.from('backups').delete().eq('user_id', user.id);
     if (backupErr) throw new Error(`backups: ${backupErr.message}`);
 
+    // Suggestions go too. They are user-submitted content tied to the account,
+    // and the deletion page promises everything held for them is removed —
+    // keeping the text with a nulled user_id would quietly make that untrue.
+    const { error: suggestionsErr } = await admin
+      .from('suggestions')
+      .delete()
+      .eq('user_id', user.id);
+    if (suggestionsErr) throw new Error(`suggestions: ${suggestionsErr.message}`);
+
     const { error: userErr } = await admin.auth.admin.deleteUser(user.id);
     if (userErr) throw new Error(`auth user: ${userErr.message}`);
 

@@ -985,6 +985,30 @@
 }
 .sa-count { font-size: 10.5px; color: var(--text-faint); }
 
+/* --- suggestion box -------------------------------------------------------- */
+
+.suggest-input {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 11px 12px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.suggest-input:focus { outline: none; border-color: var(--ember); }
+.suggest-input::placeholder { color: var(--text-faint); }
+.suggest-count {
+  margin: 6px 2px 0;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  text-align: right;
+}
+.suggest-count.over { color: var(--ember); }
+
 /* --- list management ------------------------------------------------------- */
 
 /* Two sibling buttons, never one nested in the other: nested interactive

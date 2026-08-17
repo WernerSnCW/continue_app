@@ -3,6 +3,7 @@ import { playClick } from '../lib/sound';
 
 interface Props {
   onBack: () => void;
+  onSuggest: () => void;
 }
 
 /**
@@ -18,7 +19,7 @@ const DELETE_URL = 'https://quietfoundry.io/continue/delete-my-data';
  * this already installed the thing — they want to know who made it and why it
  * exists, not to be sold it a second time.
  */
-export function AboutScreen({ onBack }: Props) {
+export function AboutScreen({ onBack, onSuggest }: Props) {
   return (
     <div className="screen">
       <div className="counter-top">
@@ -102,6 +103,24 @@ export function AboutScreen({ onBack }: Props) {
           Game names and cover art come from IGDB. Your tally lives on your phone; a backup is kept
           in the cloud only so you can get it back if you lose the device.
         </p>
+      </div>
+
+      <div className="about-block">
+        <h4>Got an idea?</h4>
+        <p>
+          Tell me. It won't get a reply, but it does get read, and a fair bit of what's in here
+          started as somebody being mildly irritated by something.
+        </p>
+        <button
+          className="text-btn wide"
+          style={{ marginTop: 8 }}
+          onClick={() => {
+            playClick();
+            onSuggest();
+          }}
+        >
+          Suggest something
+        </button>
       </div>
 
       <div className="about-block">

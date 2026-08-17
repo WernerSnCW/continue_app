@@ -18,6 +18,7 @@ import { BackupScreen } from './screens/BackupScreen';
 import { GamesListScreen } from './screens/GamesListScreen';
 import { ListEditScreen } from './screens/ListEditScreen';
 import { ListsScreen } from './screens/ListsScreen';
+import { SuggestScreen } from './screens/SuggestScreen';
 import {
   activeRun,
   adoptSnapshot,
@@ -55,6 +56,7 @@ type View =
   | { name: 'games' }
   | { name: 'about' }
   | { name: 'lists' }
+  | { name: 'suggest' }
   | { name: 'list-edit'; listId: string }
   /** `from` so Back returns where you came from, not always the counter. */
   | { name: 'stats'; gameId: string; from: 'counter' | 'ranking' }
@@ -492,7 +494,14 @@ export default function App() {
           />
         );
       case 'about':
-        return <AboutScreen onBack={() => setView({ name: 'home' })} />;
+        return (
+          <AboutScreen
+            onBack={() => setView({ name: 'home' })}
+            onSuggest={() => setView({ name: 'suggest' })}
+          />
+        );
+      case 'suggest':
+        return <SuggestScreen onBack={() => setView({ name: 'about' })} />;
       case 'games':
         return (
           <GamesListScreen

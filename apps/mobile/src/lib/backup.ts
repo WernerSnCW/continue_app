@@ -31,7 +31,15 @@ export interface BackupStatus {
 
 let client: SupabaseClient | null = null;
 
-function db(): SupabaseClient | null {
+/**
+ * The one Supabase client, created lazily.
+ *
+ * Exported so sibling modules — suggestions, and anything else that needs the
+ * same session — share this instance rather than constructing their own. A
+ * second client would keep a second copy of the auth session and the two would
+ * drift apart on sign-in, sign-out and deletion.
+ */
+export function db(): SupabaseClient | null {
   if (!isBackupConfigured) return null;
   client ??= createClient(URL!, KEY!, {
     auth: {
