@@ -1,121 +1,145 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Delete your data — Continue? — Quiet Foundry</title>
-<style>
-  :root { color-scheme: light dark; }
-  body {
-    max-width: 46rem; margin: 0 auto; padding: 2rem 1.25rem 4rem;
-    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-  h1 { font-size: 1.7rem; margin-bottom: .25rem; }
-  h2 { font-size: 1.15rem; margin-top: 2.2rem; }
-  .sub { opacity: .7; margin-top: 0; }
-  .box { border: 1px solid rgba(128,128,128,.4); border-radius: 10px; padding: 1rem 1.15rem; margin: 1.25rem 0; }
-  .box h3 { margin-top: 0; font-size: 1rem; }
-  .cta {
-    display: inline-block; margin-top: .5rem; padding: .7rem 1.1rem; border-radius: 8px;
-    background: #d9382f; color: #fff; text-decoration: none; font-weight: 600;
-  }
-  ul { padding-left: 1.2rem; }
-  footer { margin-top: 3rem; font-size: .9rem; opacity: .75; }
-</style>
-</head>
-<body>
+<!--
+  Data deletion page for Continue? — drop-in fragment for Framer.
 
-<h1>Delete your data</h1>
-<p class="sub">Continue? — made by Quiet Foundry. Last updated 10 August 2026.</p>
+  Same conventions as privacy.html: a fragment, not a document, with every rule
+  scoped under .qf-legal and font/colour inherited from the surrounding page.
 
-<p>
-  This page explains how to permanently delete your Continue? account and everything
-  stored with it. There are two routes: from inside the app, which is immediate, or by
-  email if you no longer have the app installed.
-</p>
+  Google Play requires this to be reachable without installing the app, so it
+  has to be a real public page rather than a section of the privacy policy.
 
-<div class="box">
-  <h3>Fastest: delete it yourself, in the app</h3>
+  Publish at: https://quietfoundry.io/continue/delete-my-data
+  That exact path is hardcoded in the app's About screen (DELETE_URL).
+-->
+<div class="qf-legal">
+  <style>
+    .qf-legal {
+      font-family: inherit;
+      color: inherit;
+      line-height: 1.65;
+      max-width: 46rem;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .qf-legal h1 { font-size: 1.7em; line-height: 1.25; margin: 0 0 0.25rem; }
+    .qf-legal h2 { font-size: 1.15em; line-height: 1.3; margin: 2.2rem 0 0.6rem; }
+    .qf-legal h3 { font-size: 1em; line-height: 1.3; margin: 0 0 0.5rem; }
+    .qf-legal p { margin: 0 0 1rem; font-size: 1em; }
+    .qf-legal ul { padding-left: 1.2rem; margin: 0 0 1rem; }
+    .qf-legal li { margin-bottom: 0.5rem; }
+    .qf-legal a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+    .qf-legal .qf-sub { opacity: 0.7; margin-top: 0; }
+    .qf-legal .qf-box {
+      border: 1px solid currentColor;
+      border-color: color-mix(in srgb, currentColor 30%, transparent);
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      margin: 1.25rem 0;
+    }
+    /* The only deliberately branded colour on the page: a destructive action
+       should not be styleless, and red reads the same in either theme. */
+    .qf-legal .qf-cta {
+      display: inline-block;
+      margin-top: 0.5rem;
+      padding: 0.7rem 1.1rem;
+      border-radius: 8px;
+      background: #d9382f;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .qf-legal .qf-foot { margin-top: 3rem; font-size: 0.9em; opacity: 0.75; }
+  </style>
+
+  <h1>Delete your data</h1>
+  <p class="qf-sub">Continue? — made by Quiet Foundry. Last updated 17 August 2026.</p>
+
   <p>
-    Open <strong>Continue?</strong> → <strong>Backup &amp; restore</strong> → scroll to
-    <strong>Delete my account and cloud data</strong>. You will be asked to type
-    <code>DELETE</code> to confirm.
+    This page explains how to permanently delete your Continue? account and everything
+    stored with it. There are two routes: from inside the app, which is immediate, or by
+    email if you no longer have the app installed.
   </p>
+
+  <div class="qf-box">
+    <h3>Fastest: delete it yourself, in the app</h3>
+    <p>
+      Open <strong>Continue?</strong> → <strong>Backup &amp; restore</strong> → scroll to
+      <strong>Delete my account and cloud data</strong>. You will be asked to type
+      <code>DELETE</code> to confirm.
+    </p>
+    <p style="margin-bottom:0">
+      This happens immediately and needs no request, no waiting, and no contact with us.
+    </p>
+  </div>
+
+  <div class="qf-box">
+    <h3>If you no longer have the app</h3>
+    <p>
+      Email us from <strong>the address you linked to your backup</strong>. We use the
+      sending address to identify the account, so the request must come from that mailbox.
+    </p>
+    <a class="qf-cta" href="mailto:contact@quietfoundry.io?subject=Delete%20my%20Continue%3F%20data&amp;body=Please%20permanently%20delete%20my%20Continue%3F%20account%20and%20all%20data%20associated%20with%20this%20email%20address.">
+      Email a deletion request
+    </a>
+    <p style="margin:1rem 0 0">
+      We will confirm once it is done. Requests are handled within <strong>30 days</strong>,
+      and in practice much sooner.
+    </p>
+  </div>
+
+  <h2>What gets deleted</h2>
+
+  <ul>
+    <li>Your cloud backup — the games you track, death counts and their timestamps, play-time sessions, and run history.</li>
+    <li>Every retained earlier snapshot of that backup.</li>
+    <li>Any suggestions you sent from inside the app.</li>
+    <li>The account record itself, including your email address if you linked one.</li>
+  </ul>
+
   <p>
-    This happens immediately and needs no request, no waiting, and no contact with us.
+    All of it is removed permanently and cannot be recovered afterwards, including by us.
+    There is no grace period and no archived copy.
+  </p>
+
+  <h2>What is not affected</h2>
+
+  <p>
+    The copy on your phone. Deleting your account removes what we hold; the games and
+    deaths on the device keep working exactly as before, they simply stop being backed
+    up. To remove the local copy as well, uninstall the app or clear its storage in
+    Android settings.
+  </p>
+
+  <p>
+    Purchase records held by Google Play are also outside our control. If you bought the
+    one-time unlock, that record belongs to your Google account — see
+    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's privacy policy</a>.
+  </p>
+
+  <h2>If you never linked an email</h2>
+
+  <p>
+    Backups without an email address are deliberately anonymous: we hold no information
+    that connects them to a person, which is also why we cannot identify one from an
+    email request. Such a backup can only be deleted from inside the app, on the phone
+    that owns it — the option is in the same place, <strong>Backup &amp; restore</strong>.
+  </p>
+
+  <p>
+    If you have already uninstalled the app without deleting an anonymous backup, there
+    is no longer any way for anyone — including us — to link that data to you. It holds
+    nothing but game names and death counts, and its retained snapshots age out
+    automatically.
+  </p>
+
+  <h2>Contact</h2>
+
+  <p>
+    Continue? is published by Snyman Business Consulting, trading as Quiet Foundry,
+    Netherlands. Email
+    <a href="mailto:contact@quietfoundry.io">contact@quietfoundry.io</a>.
+  </p>
+
+  <p class="qf-foot">
+    See also our <a href="/continue/privacy">privacy policy</a>.
   </p>
 </div>
-
-<div class="box">
-  <h3>If you no longer have the app</h3>
-  <p>
-    Email us from <strong>the address you linked to your backup</strong>. We use the
-    sending address to identify the account, so the request must come from that mailbox.
-  </p>
-  <a class="cta" href="mailto:contact@quietfoundry.io?subject=Delete%20my%20Continue%3F%20data&amp;body=Please%20permanently%20delete%20my%20Continue%3F%20account%20and%20all%20data%20associated%20with%20this%20email%20address.">
-    Email a deletion request
-  </a>
-  <p style="margin-top:1rem">
-    We will confirm once it is done. Requests are handled within <strong>30 days</strong>,
-    and in practice much sooner.
-  </p>
-</div>
-
-<h2>What gets deleted</h2>
-
-<ul>
-  <li>Your cloud backup — the games you track, death counts and their timestamps, play-time sessions, and run history.</li>
-  <li>Every retained earlier snapshot of that backup.</li>
-  <li>Any suggestions you sent from inside the app.</li>
-  <li>The account record itself, including your email address if you linked one.</li>
-</ul>
-
-<p>
-  All of it is removed permanently and cannot be recovered afterwards, including by us.
-  There is no grace period and no archived copy.
-</p>
-
-<h2>What is not affected</h2>
-
-<p>
-  The copy on your phone. Deleting your account removes what we hold; the games and
-  deaths on the device keep working exactly as before, they simply stop being backed
-  up. To remove the local copy as well, uninstall the app or clear its storage in
-  Android settings.
-</p>
-
-<p>
-  Purchase records held by Google Play are also outside our control. If you bought the
-  one-time unlock, that record belongs to your Google account — see
-  <a href="https://policies.google.com/privacy">Google's privacy policy</a>.
-</p>
-
-<h2>If you never linked an email</h2>
-
-<p>
-  Backups without an email address are deliberately anonymous: we hold no information
-  that connects them to a person, which is also why we cannot identify one from an
-  email request. Such a backup can only be deleted from inside the app, on the phone
-  that owns it — the option is in the same place, <strong>Backup &amp; restore</strong>.
-</p>
-
-<p>
-  If you have already uninstalled the app without deleting an anonymous backup, there
-  is no longer any way for anyone — including us — to link that data to you. It holds
-  nothing but game names and death counts, and its retained snapshots age out
-  automatically.
-</p>
-
-<h2>Contact</h2>
-
-<p>
-  Quiet Foundry — <a href="mailto:contact@quietfoundry.io">contact@quietfoundry.io</a><br />
-  See also our <a href="./privacy.html">privacy policy</a>.
-</p>
-
-<footer>
-  Continue? is made by Quiet Foundry.
-</footer>
-
-</body>
-</html>
