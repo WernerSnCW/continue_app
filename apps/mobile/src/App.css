@@ -1546,6 +1546,41 @@
 }
 .cp-label { font-size: 11px; color: var(--text-faint); margin-right: auto; }
 
+/* --- locked (paid) affordances ---------------------------------------------
+   The house rule: a paid feature is shown to everybody and acts for nobody who
+   has not paid. Hiding it means it is never discovered; faking it means
+   something gets configured that will not then happen. So the control renders,
+   reads as unavailable, and its action opens the paywall. */
+
+.locked-badge {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: 'Inter', sans-serif;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+/* Dimmed enough to read as unavailable, legible enough to still sell it. */
+.cycle-picker.is-locked .cp-step,
+.cycle-picker.is-locked .cp-field {
+  opacity: 0.4;
+}
+.cp-go.locked {
+  background: none;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+}
+
+.nav-tile.is-locked { border-color: rgba(232, 182, 74, 0.45); }
+.nav-tile.is-locked .nt-chev { color: var(--gold); }
+
 /* The picker as it appears on the run-finished screen, under the two obvious
    choices — a third option, not a competing one. */
 .rd-custom {

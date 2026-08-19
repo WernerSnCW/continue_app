@@ -463,6 +463,7 @@ export default function App() {
             onStartTimer={(runId) => startTimer(view.gameId, runId)}
             onStopTimer={stopTimer}
             onOpenStats={() => setView({ name: 'stats', gameId: view.gameId, from: 'counter' })}
+            onOpenPaywall={() => setView({ name: 'paywall' })}
           />
         );
       case 'stats':

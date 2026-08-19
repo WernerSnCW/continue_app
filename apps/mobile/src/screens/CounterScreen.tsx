@@ -33,6 +33,7 @@ interface Props {
   onStartTimer: (runId: string) => void;
   onStopTimer: () => void;
   onOpenStats: () => void;
+  onOpenPaywall: () => void;
 }
 
 export function CounterScreen({
@@ -49,6 +50,7 @@ export function CounterScreen({
   onStartTimer,
   onStopTimer,
   onOpenStats,
+  onOpenPaywall,
 }: Props) {
   const game = state.games.find((g) => g.id === gameId);
   const run = activeRun(state, gameId);
@@ -263,21 +265,29 @@ export function CounterScreen({
             </div>
 
             {/* Being asked "what next?" is exactly when somebody wants to say
-                "I'm actually on NG+7". Leaving this only in the run-options
-                menu made it look as though the app could not do it at all. */}
-            {unlimited && (
-              <div className="rd-custom">
-                <div className="rd-custom-label">Or start at a specific level</div>
-                <CyclePicker
-                  value={customCycle}
-                  onChange={setCustomCycle}
-                  onStart={() => {
-                    playAdvance();
-                    onStartRun(customCycle);
-                  }}
-                />
+                "I'm actually on NG+7". Shown to everybody, inert on the free
+                tier: hiding it meant a free user could not learn the feature
+                existed, and it is one of the things the unlock buys. */}
+            <div className="rd-custom">
+              <div className="rd-custom-label">
+                Or start at a specific level
+                {!unlimited && <span className="locked-badge">Paid</span>}
               </div>
-            )}
+              <CyclePicker
+                value={customCycle}
+                onChange={setCustomCycle}
+                locked={!unlimited}
+                onStart={() => {
+                  if (!unlimited) {
+                    playClick();
+                    onOpenPaywall();
+                    return;
+                  }
+                  playAdvance();
+                  onStartRun(customCycle);
+                }}
+              />
+            </div>
           </div>
         </div>
       ) : (
@@ -419,17 +429,28 @@ export function CounterScreen({
                   </span>
                 </button>
 
-                {/* Unlocked users pick any cycle: someone may be starting to
-                    track a game they're already seven playthroughs into. */}
-                {unlimited && (
+                {/* Pick any cycle: someone may be starting to track a game
+                    they're already seven playthroughs into. Visible but inert
+                    on the free tier, same as on the run-finished screen. */}
+                {
                   <div className="sheet-row" role="group" aria-label="Start at a specific NG+ level">
-                    <span className="sr-name">Start at a specific level</span>
+                    <span className="sr-name">
+                      Start at a specific level
+                      {!unlimited && <span className="locked-badge">Paid</span>}
+                    </span>
                     <span className="sr-note">Jump straight to the cycle you're actually on.</span>
                     <div style={{ marginTop: 10 }}>
                       <CyclePicker
                         value={customCycle}
                         onChange={setCustomCycle}
+                        locked={!unlimited}
                         onStart={() => {
+                          if (!unlimited) {
+                            playClick();
+                            closeMenu();
+                            onOpenPaywall();
+                            return;
+                          }
                           playAdvance();
                           onStartRun(customCycle);
                           closeMenu();
@@ -437,7 +458,7 @@ export function CounterScreen({
                       />
                     </div>
                   </div>
-                )}
+                }
 
                 <button className="sheet-row" onClick={() => setConfirm('reset')}>
                   <span className="sr-name">Reset this run</span>

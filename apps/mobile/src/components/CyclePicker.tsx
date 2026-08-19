@@ -3,7 +3,16 @@ import { clampCycle, MAX_CYCLE, runLabel } from '../lib/store';
 interface Props {
   value: number;
   onChange: (cycle: number) => void;
+  /** Starts the run, or opens the paywall when `locked`. */
   onStart: () => void;
+  /**
+   * Free tier. The control is shown rather than hidden, inert rather than
+   * fake: the steppers do not move and the field cannot be typed into, so
+   * nothing is configured that will not then happen. Hiding it entirely meant
+   * a free user had no way to learn the feature existed — and it is one of
+   * four things the unlock actually buys.
+   */
+  locked?: boolean;
 }
 
 /**
@@ -20,13 +29,13 @@ interface Props {
  * The value is typeable too: stepping to NG+9 was nine accurate taps to enter a
  * number the user already knew.
  */
-export function CyclePicker({ value, onChange, onStart }: Props) {
+export function CyclePicker({ value, onChange, onStart, locked = false }: Props) {
   return (
-    <div className="cycle-picker">
+    <div className={`cycle-picker${locked ? ' is-locked' : ''}`}>
       <button
         className="cp-step"
         onClick={() => onChange(Math.max(0, value - 1))}
-        disabled={value <= 0}
+        disabled={locked || value <= 0}
         aria-label="Lower NG+ level"
       >
         −
@@ -46,6 +55,7 @@ export function CyclePicker({ value, onChange, onStart }: Props) {
           // without fighting a character that reappears.
           value={value === 0 ? '' : String(value)}
           placeholder="0"
+          disabled={locked}
           aria-label={`NG+ level, currently ${runLabel(value)}`}
           onChange={(e) => onChange(clampCycle(e.target.value))}
         />
@@ -54,13 +64,13 @@ export function CyclePicker({ value, onChange, onStart }: Props) {
       <button
         className="cp-step"
         onClick={() => onChange(Math.min(MAX_CYCLE, value + 1))}
-        disabled={value >= MAX_CYCLE}
+        disabled={locked || value >= MAX_CYCLE}
         aria-label="Raise NG+ level"
       >
         +
       </button>
-      <button className="cp-go" onClick={onStart}>
-        Start {runLabel(value)}
+      <button className={`cp-go${locked ? ' locked' : ''}`} onClick={onStart}>
+        {locked ? 'Unlock' : `Start ${runLabel(value)}`}
       </button>
     </div>
   );

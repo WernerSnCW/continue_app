@@ -419,32 +419,43 @@ export function HomeScreen({
         </button>
       </div>
 
-      {/* Only once unlocked. Lists are hidden entirely on the free tier, so a
-          locked tile here would advertise a feature the ranking screen already
-          upsells, on the one screen that should stay uncluttered. */}
-      {unlimited && (
-        <div className="tile-row">
-          <button
-            className="nav-tile wide"
-            onClick={() => {
-              playClick();
-              onOpenLists();
-            }}
-          >
-            <span className="nt-chev" aria-hidden="true">
-              ›
-            </span>
-            <span className="nt-n">{lists.length}</span>
-            <span className="nt-l">
-              {lists.length === 1 ? 'list' : 'lists'}
-              {lists.length === 0 ? ' yet' : ''}
-            </span>
-            <span className="nt-hint">
-              {lists.length === 0 ? 'group games to compare them' : 'manage and compare'}
-            </span>
-          </button>
-        </div>
-      )}
+      {/* Shown on the free tier too, marked as paid. Hiding a paid feature
+          entirely means nobody discovers it exists, which serves neither the
+          player nor the unlock — so it is visible and inert, and the tap goes
+          to the paywall rather than nowhere. */}
+      <div className="tile-row">
+        <button
+          className={`nav-tile wide${unlimited ? '' : ' is-locked'}`}
+          onClick={() => {
+            playClick();
+            if (unlimited) onOpenLists();
+            else onOpenPaywall();
+          }}
+        >
+          <span className="nt-chev" aria-hidden="true">
+            ›
+          </span>
+          {unlimited ? (
+            <>
+              <span className="nt-n">{lists.length}</span>
+              <span className="nt-l">
+                {lists.length === 1 ? 'list' : 'lists'}
+                {lists.length === 0 ? ' yet' : ''}
+              </span>
+              <span className="nt-hint">
+                {lists.length === 0 ? 'group games to compare them' : 'manage and compare'}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="nt-l">
+                your own lists<span className="locked-badge">Paid</span>
+              </span>
+              <span className="nt-hint">group games and rank each list on its own</span>
+            </>
+          )}
+        </button>
+      </div>
 
       <div className="tile-grid summary">
         <div className="tile">
