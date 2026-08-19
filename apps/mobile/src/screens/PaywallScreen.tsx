@@ -26,9 +26,14 @@ const FEATURES: readonly { title: string; body: string }[] = [
     title: 'Restore archived history',
     body: 'Every game you swapped out comes back, tallies intact.',
   },
+  // Careful here: advancing to NG+ and starting a fresh playthrough are both
+  // free, and describing them as paid would sell somebody something they
+  // already have. What the unlock actually adds is skipping straight to an
+  // arbitrary cycle, for a game you are already deep into when you start
+  // tracking it.
   {
-    title: 'NG+ / NG++ run tracking',
-    body: "Keep each playthrough's count separate, however deep you go.",
+    title: 'Start at any NG+ level',
+    body: 'Already seven playthroughs deep? Begin tracking at the cycle you are actually on.',
   },
   {
     title: 'Your own lists',
