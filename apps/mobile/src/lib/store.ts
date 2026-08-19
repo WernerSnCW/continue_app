@@ -137,12 +137,42 @@ export function save(state: AppState): boolean {
 const id = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
+/**
+ * Highest NG+ cycle that can be entered by hand.
+ *
+ * Arbitrary, but a bound is needed: the field accepts typing, and "NG+999999"
+ * would render as a label nothing has room for.
+ */
+export const MAX_CYCLE = 99;
+
+/**
+ * Coerces anything the NG+ field can produce into a usable cycle.
+ *
+ * A typed number input hands back an empty string while it is being retyped,
+ * and will happily yield a negative, a decimal or NaN. Clamping at the point of
+ * entry means the rest of the app never sees a cycle it has to defend against,
+ * and clearing the field reads as NG rather than blanking the control.
+ */
+export function clampCycle(raw: string | number): number {
+  if (raw === '' || raw === null || raw === undefined) return 0;
+  const n = typeof raw === 'number' ? raw : Number(raw);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(MAX_CYCLE, Math.max(0, Math.floor(n)));
+}
+
 export const runTypeForCycle = (cycle: number): RunType =>
   cycle <= 0 ? 'ng' : cycle === 1 ? 'ng+' : 'ng++';
 
-/** "NG", "NG+", "NG++", then "NG+3" and up — NG++++ gets unreadable fast. */
+/**
+ * "NG", "NG+", then "NG+2", "NG+3" and up.
+ *
+ * Numbered from the second cycle rather than doubling the plus. "NG++" reads
+ * fine on its own and then falls apart: nobody can tell NG+++ from NG++++ at a
+ * glance, and the sequence has to switch to numbers eventually anyway. Doing it
+ * one cycle earlier keeps every label after the first a consistent shape.
+ */
 export const runLabel = (cycle: number): string =>
-  cycle <= 0 ? 'NG' : cycle === 1 ? 'NG+' : cycle === 2 ? 'NG++' : `NG+${cycle}`;
+  cycle <= 0 ? 'NG' : cycle === 1 ? 'NG+' : `NG+${cycle}`;
 
 /** Longer form used on cards, matching the mockup's "First run" wording. */
 export const runLabelLong = (cycle: number): string =>

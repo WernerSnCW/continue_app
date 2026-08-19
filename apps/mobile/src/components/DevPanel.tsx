@@ -10,7 +10,7 @@ interface Props {
 
 /**
  * Entitlement switch for builds where billing is mocked. Flipping it grants
- * unlimited games, restores archived games, and unlocks the NG++ segment.
+ * unlimited games, restores archived games, and unlocks the NG+2 segment.
  *
  * Shown when running the dev server, or in a build made with
  * `pnpm build:testing`. Both are gated on the same thing that decides whether

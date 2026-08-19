@@ -1545,32 +1545,68 @@
   margin-bottom: 18px;
 }
 .cp-label { font-size: 11px; color: var(--text-faint); margin-right: auto; }
+/* 44px, not the 28px this used to be. Android asks for 48dp minimum and the
+   old target was roughly 5mm square — small enough that missing it read as the
+   control being broken rather than as a near miss. */
 .cp-step {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
+  width: 44px;
+  height: 44px;
+  border-radius: 9px;
   border: 1px solid var(--line);
   background: var(--card-2);
-  font-size: 15px;
+  font-size: 19px;
   line-height: 1;
   color: var(--text);
   flex-shrink: 0;
 }
-.cp-value {
+.cp-step:disabled { opacity: 0.35; }
+
+/* The prefix is drawn beside the input rather than inside it, so the field
+   holds only the number the user actually types. */
+.cp-field {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+.cp-prefix {
   font-family: 'Cinzel', serif;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  min-width: 4.2rem;
+  color: var(--text);
+}
+.cp-input {
+  width: 2.4rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 2px 0;
+  font-family: 'Cinzel', serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
   text-align: center;
 }
+.cp-input:focus { outline: none; border-bottom-color: var(--ember); }
+/* The spinners duplicate the − and + either side and crowd a 2.4rem field. */
+.cp-input::-webkit-outer-spin-button,
+.cp-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.cp-input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
+/* Matches the steppers' height: it is the action the whole row exists for, and
+   a 28px target beside two 44px ones is the easiest thing here to miss. */
 .cp-go {
   font-size: 11px;
   font-weight: 700;
   color: #2a0c02;
   background: linear-gradient(180deg, #ff7a52, var(--ember));
-  border-radius: 8px;
-  padding: 7px 12px;
+  border-radius: 9px;
+  padding: 0 14px;
+  min-height: 44px;
   margin-left: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* --- global play time tracker bar -------------------------------------------- */

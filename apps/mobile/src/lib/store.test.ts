@@ -9,6 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   activeRun,
   addGameToList,
+  clampCycle,
+  MAX_CYCLE,
   adoptSnapshot,
   archivedRunsForGame,
   deathsForGame,
@@ -19,6 +21,7 @@ import {
   purgeGameFromLists,
   removeGameFromList,
   renameList,
+  runLabel,
   lastDeathAtForRun,
   lastPlayedGame,
   lifetimeTotals,
@@ -320,6 +323,67 @@ describe('unsessionedSecondsForRun', () => {
       ],
     };
     expect(unsessionedSecondsForRun(s, r)).toBe(0);
+  });
+});
+
+describe('clampCycle', () => {
+  // The NG+ field is typeable, so this takes whatever a number input can emit.
+  it.each([
+    ['a plain number', '5', 5],
+    ['zero', '0', 0],
+    ['the maximum', String(MAX_CYCLE), MAX_CYCLE],
+  ])('accepts %s', (_label, input, expected) => {
+    expect(clampCycle(input)).toBe(expected);
+  });
+
+  it('reads an empty field as NG rather than NaN', () => {
+    // Clearing the box to retype must not blank the control or crash a label.
+    expect(clampCycle('')).toBe(0);
+  });
+
+  it('clamps above the maximum instead of accepting NG+999999', () => {
+    expect(clampCycle('250')).toBe(MAX_CYCLE);
+    expect(clampCycle(1e9)).toBe(MAX_CYCLE);
+  });
+
+  it('clamps a negative to a first run', () => {
+    expect(clampCycle('-4')).toBe(0);
+  });
+
+  it('floors a decimal, since half a playthrough is not a cycle', () => {
+    expect(clampCycle('3.9')).toBe(3);
+  });
+
+  it.each([
+    ['letters', 'abc'],
+    ['NaN', NaN],
+    ['Infinity', Infinity],
+  ])('falls back to NG for %s', (_label, input) => {
+    expect(clampCycle(input as string | number)).toBe(0);
+  });
+});
+
+describe('runLabel', () => {
+  it.each([
+    [0, 'NG'],
+    [1, 'NG+'],
+    [2, 'NG+2'],
+    [3, 'NG+3'],
+    [12, 'NG+12'],
+    [99, 'NG+99'],
+  ])('labels cycle %i as %s', (cycle, expected) => {
+    expect(runLabel(cycle)).toBe(expected);
+  });
+
+  it('never produces a doubled plus', () => {
+    // "NG++" was fine alone and fell apart after it: NG+++ against NG++++ is
+    // unreadable at a glance, so every cycle past the first is numbered.
+    const labels = Array.from({ length: 100 }, (_, i) => runLabel(i));
+    expect(labels.filter((l) => l.includes('++'))).toEqual([]);
+  });
+
+  it('treats a negative cycle as a first run rather than showing a minus', () => {
+    expect(runLabel(-1)).toBe('NG');
   });
 });
 

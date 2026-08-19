@@ -55,7 +55,7 @@ interaction.
 
 WHAT IT TRACKS
 
-• Deaths per game and per run. NG, NG+ and NG++ each keep their own count
+• Deaths per game and per run. NG, NG+ and NG+2 each keep their own count
   instead of blurring into one pile.
 
 • Play time, on a session clock that keeps running while you are actually in

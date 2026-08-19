@@ -73,7 +73,7 @@ export function AddGameScreen({
   const segments = [
     { cycle: 0, label: 'First run', locked: false },
     { cycle: 1, label: 'NG+', locked: false },
-    { cycle: 2, label: 'NG++', locked: !unlimited },
+    { cycle: 2, label: 'NG+2', locked: !unlimited },
   ];
 
   // Someone may well install this mid-way through an NG+7 run. Unlocked users

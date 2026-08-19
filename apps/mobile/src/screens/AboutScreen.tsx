@@ -75,7 +75,7 @@ export function AboutScreen({ onBack, onSuggest }: Props) {
       <div className="about-block">
         <h4>How it works out difficulty</h4>
         <p>
-          Every death gets logged against a specific run, so NG, NG+ and NG++ each keep their own
+          Every death gets logged against a specific run, so NG, NG+ and NG+2 each keep their own
           count instead of blurring into one pile.
         </p>
         <p>
