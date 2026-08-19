@@ -7,8 +7,10 @@
   Google Play requires this to be reachable without installing the app, so it
   has to be a real public page rather than a section of the privacy policy.
 
-  Publish at: https://quietfoundry.io/continue/delete-my-data
-  That exact path is hardcoded in the app's About screen (DELETE_URL).
+  Publish at: https://www.quietfoundry.io/continue/delete-my-data
+  That exact URL is hardcoded in the app's About screen (DELETE_URL) and is the
+  deletion route Play requires. www is the canonical host; the bare domain only
+  reaches this page by redirect.
 -->
 <div class="qf-legal">
   <style>

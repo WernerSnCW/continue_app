@@ -13,8 +13,13 @@
   This file is the single source of truth for the policy. There is no second
   standalone copy, because two copies of a legal document drift.
 
-  Publish at: https://quietfoundry.io/continue/privacy
-  That exact path is hardcoded in the app's About screen (PRIVACY_URL).
+  Publish at: https://www.quietfoundry.io/continue/privacy
+  That exact URL is hardcoded in the app's About screen (PRIVACY_URL) and goes
+  in the Play listing. www is the canonical host; the bare domain only reaches
+  this page by redirect.
+
+  The cross-link below is root-relative on purpose, so it follows whichever
+  host the visitor arrived on rather than bouncing them across domains.
 -->
 <div class="qf-legal">
   <style>

@@ -10,9 +10,14 @@ interface Props {
  * Play requires the privacy policy to be reachable from a stable public URL,
  * and the same URL goes in the store listing. Kept as constants so the two
  * links cannot drift apart from the pages themselves.
+ *
+ * The `www.` is deliberate and load-bearing: it is the canonical host the site
+ * actually serves from, and the bare domain only reaches these pages by
+ * redirect. Linking through a redirect works right up until the redirect
+ * doesn't, and one of these URLs is a Play submission requirement.
  */
-const PRIVACY_URL = 'https://quietfoundry.io/continue/privacy';
-const DELETE_URL = 'https://quietfoundry.io/continue/delete-my-data';
+const PRIVACY_URL = 'https://www.quietfoundry.io/continue/privacy';
+const DELETE_URL = 'https://www.quietfoundry.io/continue/delete-my-data';
 
 /**
  * Written in the app's own voice rather than as a product page. Anyone opening
