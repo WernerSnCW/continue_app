@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { BarsIcon, SkullIcon, SwordsIcon } from '../components/icons';
 import { HelpTip } from '../components/HelpTip';
+import { CyclePicker } from '../components/CyclePicker';
 import { formatAgo, formatClock } from '../lib/format';
 import { playAdvance, playClick, playDeath } from '../lib/sound';
 import {
   activeRun,
-  clampCycle,
   deathsForGame,
   deathsForRun,
   deathsInSession,
@@ -13,7 +13,6 @@ import {
   lastDeathAtForRun,
   latestRun,
   liveSecondsFor,
-  MAX_CYCLE,
   nextCycle,
   runLabel,
   type AppState,
@@ -262,6 +261,23 @@ export function CounterScreen({
                 Start a fresh playthrough (NG)
               </button>
             </div>
+
+            {/* Being asked "what next?" is exactly when somebody wants to say
+                "I'm actually on NG+7". Leaving this only in the run-options
+                menu made it look as though the app could not do it at all. */}
+            {unlimited && (
+              <div className="rd-custom">
+                <div className="rd-custom-label">Or start at a specific level</div>
+                <CyclePicker
+                  value={customCycle}
+                  onChange={setCustomCycle}
+                  onStart={() => {
+                    playAdvance();
+                    onStartRun(customCycle);
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -409,57 +425,16 @@ export function CounterScreen({
                   <div className="sheet-row" role="group" aria-label="Start at a specific NG+ level">
                     <span className="sr-name">Start at a specific level</span>
                     <span className="sr-note">Jump straight to the cycle you're actually on.</span>
-                    {/* The steppers were 28px, which is half Android's minimum
-                        touch target and reads as "the picker doesn't work"
-                        rather than "I missed". They are full-size now, and the
-                        number is typeable — stepping to NG+9 was nine accurate
-                        taps, which is the wrong way to enter a number you
-                        already know. */}
-                    <div className="cycle-picker" style={{ marginTop: 10 }}>
-                      <button
-                        className="cp-step"
-                        onClick={() => setCustomCycle((c) => Math.max(0, c - 1))}
-                        disabled={customCycle <= 0}
-                        aria-label="Lower NG+ level"
-                      >
-                        −
-                      </button>
-
-                      <label className="cp-field">
-                        <span className="cp-prefix" aria-hidden="true">
-                          {customCycle === 0 ? 'NG' : 'NG+'}
-                        </span>
-                        <input
-                          className="cp-input"
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          max={MAX_CYCLE}
-                          value={customCycle === 0 ? '' : String(customCycle)}
-                          placeholder="0"
-                          aria-label={`NG+ level, currently ${runLabel(customCycle)}`}
-                          onChange={(e) => setCustomCycle(clampCycle(e.target.value))}
-                        />
-                      </label>
-
-                      <button
-                        className="cp-step"
-                        onClick={() => setCustomCycle((c) => Math.min(MAX_CYCLE, c + 1))}
-                        disabled={customCycle >= MAX_CYCLE}
-                        aria-label="Raise NG+ level"
-                      >
-                        +
-                      </button>
-                      <button
-                        className="cp-go"
-                        onClick={() => {
+                    <div style={{ marginTop: 10 }}>
+                      <CyclePicker
+                        value={customCycle}
+                        onChange={setCustomCycle}
+                        onStart={() => {
                           playAdvance();
                           onStartRun(customCycle);
                           closeMenu();
                         }}
-                      >
-                        Start {runLabel(customCycle)}
-                      </button>
+                      />
                     </div>
                   </div>
                 )}

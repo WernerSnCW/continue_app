@@ -17,8 +17,14 @@
 export interface RankableGame {
   gameId: string;
   name: string;
-  /** Label for the current run, e.g. "NG+2" or "First run". */
-  runLabel: string;
+  /**
+   * How many runs the figures below are aggregated from.
+   *
+   * Not the current run's cycle. These totals span every counted run, so naming
+   * one cycle beside them implied they belonged to it — "NG+ · 60h logged" read
+   * as sixty hours of NG+.
+   */
+  runs: number;
   deaths: number;
   playedSeconds: number;
 }

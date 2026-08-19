@@ -1,11 +1,10 @@
 import { playClick } from '../lib/sound';
 import { isRankable, MIN_SCORED_GAMES } from '../lib/ranking';
 import {
-  activeRun,
+  contributingRunsForGame,
   deathsForGame,
   gamesInList,
   playedSecondsForGame,
-  runLabelLong,
   type AppState,
 } from '../lib/store';
 
@@ -36,16 +35,15 @@ export function ListsScreen({ state, onBack, onOpenList, onEditList, onNewList }
    * management screen rather than only after opening its ranking.
    */
   const rankableCount = (listId: string): number =>
-    gamesInList(state, listId).filter((g) => {
-      const run = activeRun(state, g.id);
-      return isRankable({
+    gamesInList(state, listId).filter((g) =>
+      isRankable({
         gameId: g.id,
         name: g.name,
-        runLabel: run ? runLabelLong(run.cycle) : 'First run',
+        runs: contributingRunsForGame(state, g.id),
         deaths: deathsForGame(state, g.id),
         playedSeconds: playedSecondsForGame(state, g.id),
-      });
-    }).length;
+      }),
+    ).length;
 
   return (
     <div className="screen">

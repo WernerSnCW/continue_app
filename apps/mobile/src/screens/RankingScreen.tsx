@@ -4,11 +4,10 @@ import { HelpTip } from '../components/HelpTip';
 import { playClick } from '../lib/sound';
 import { barWidth, formatHours, rankGames, type RankableGame } from '../lib/ranking';
 import {
-  activeRun,
+  contributingRunsForGame,
   deathsForGame,
   gamesInList,
   playedSecondsForGame,
-  runLabelLong,
   visibleGames,
   type AppState,
 } from '../lib/store';
@@ -45,16 +44,13 @@ export function RankingScreen({
   // All games rather than rendering an empty screen with no way out.
   const scopeGames = selected ? gamesInList(state, selected.id) : visibleGames(state);
 
-  const rankable: RankableGame[] = scopeGames.map((g) => {
-    const run = activeRun(state, g.id);
-    return {
-      gameId: g.id,
-      name: g.name,
-      runLabel: run ? runLabelLong(run.cycle) : 'First run',
-      deaths: deathsForGame(state, g.id),
-      playedSeconds: playedSecondsForGame(state, g.id),
-    };
-  });
+  const rankable: RankableGame[] = scopeGames.map((g) => ({
+    gameId: g.id,
+    name: g.name,
+    runs: contributingRunsForGame(state, g.id),
+    deaths: deathsForGame(state, g.id),
+    playedSeconds: playedSecondsForGame(state, g.id),
+  }));
 
   const { ranked, unranked, hardest, easiest, scored } = rankGames(rankable);
 
@@ -209,7 +205,7 @@ export function RankingScreen({
                 <div className="diff-name">
                   {g.name}
                   <span className="diff-sub">
-                    {g.runLabel} · {formatHours(g.playedSeconds)} logged
+                    {g.runs} run{g.runs === 1 ? '' : 's'} · {formatHours(g.playedSeconds)} logged
                   </span>
                 </div>
                 {g.score !== null && (

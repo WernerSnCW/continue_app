@@ -10,6 +10,7 @@ import {
   activeRun,
   addGameToList,
   clampCycle,
+  contributingRunsForGame,
   MAX_CYCLE,
   adoptSnapshot,
   archivedRunsForGame,
@@ -323,6 +324,49 @@ describe('unsessionedSecondsForRun', () => {
       ],
     };
     expect(unsessionedSecondsForRun(s, r)).toBe(0);
+  });
+});
+
+describe('contributingRunsForGame', () => {
+  const withRuns = (runs: Run[], deaths: ReturnType<typeof death>[] = []): AppState => ({
+    ...emptyState(),
+    games: [game('g1')],
+    runs,
+    deaths,
+  });
+
+  it('counts a run with logged time', () => {
+    expect(contributingRunsForGame(withRuns([run('r1', 'g1', { playedSeconds: 600 })]), 'g1')).toBe(1);
+  });
+
+  it('counts a run with deaths but no logged time', () => {
+    // Its deaths are in the totals even though its time is not.
+    const s = withRuns([run('r1', 'g1')], [death('d1', 'g1', 'r1')]);
+    expect(contributingRunsForGame(s, 'g1')).toBe(1);
+  });
+
+  it('ignores a run that was started and never played', () => {
+    // The reason this exists: opening a new cycle used to bump the number
+    // beside figures it had contributed nothing to.
+    const s = withRuns([
+      run('r1', 'g1', { cycle: 0, playedSeconds: 3600 }),
+      run('r2', 'g1', { cycle: 1 }),
+    ]);
+    expect(contributingRunsForGame(s, 'g1')).toBe(1);
+  });
+
+  it('ignores archived runs, matching the totals beside it', () => {
+    // deathsForGame and playedSecondsForGame both skip archived runs, so
+    // counting them here would describe a different set from the numbers.
+    const s = withRuns([
+      run('live', 'g1', { playedSeconds: 3600 }),
+      run('swapped', 'g1', { archived: true, archivedReason: 'swapped', playedSeconds: 7200 }),
+    ]);
+    expect(contributingRunsForGame(s, 'g1')).toBe(1);
+  });
+
+  it('is zero for a game with nothing recorded', () => {
+    expect(contributingRunsForGame(withRuns([run('r1', 'g1')]), 'g1')).toBe(0);
   });
 });
 

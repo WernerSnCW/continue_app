@@ -367,6 +367,24 @@ export const deathsForGame = (s: AppState, gameId: string): number => {
   return s.deaths.reduce((n, d) => (ids.has(d.runId) ? n + 1 : n), 0);
 };
 
+/**
+ * How many runs actually contributed to a game's totals.
+ *
+ * The ranking aggregates deaths and play time across every counted run, so
+ * labelling a row with the *current* run's cycle implied the figures beside it
+ * belonged to that run alone — a game on NG+ showing sixty hours read as sixty
+ * hours of NG+. A count of contributing runs describes the same set the numbers
+ * come from.
+ *
+ * "Contributed" means deaths or logged time, not merely existing: a run started
+ * a minute ago and never played adds nothing to either figure, and counting it
+ * would inflate the number the moment somebody opens a new cycle.
+ */
+export const contributingRunsForGame = (s: AppState, gameId: string): number =>
+  runsForGame(s, gameId).filter(
+    (r) => r.playedSeconds > 0 || s.deaths.some((d) => d.runId === r.id),
+  ).length;
+
 export const deathsForRun = (s: AppState, runId: string): number =>
   s.deaths.reduce((n, d) => (d.runId === runId ? n + 1 : n), 0);
 

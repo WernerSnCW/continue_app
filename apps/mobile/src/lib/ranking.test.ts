@@ -15,7 +15,7 @@ import {
 const g = (gameId: string, deaths: number, playedSeconds: number): RankableGame => ({
   gameId,
   name: gameId,
-  runLabel: 'NG',
+  runs: 1,
   deaths,
   playedSeconds,
 });

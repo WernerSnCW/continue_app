@@ -1545,6 +1545,21 @@
   margin-bottom: 18px;
 }
 .cp-label { font-size: 11px; color: var(--text-faint); margin-right: auto; }
+
+/* The picker as it appears on the run-finished screen, under the two obvious
+   choices — a third option, not a competing one. */
+.rd-custom {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.rd-custom-label {
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
 /* 44px, not the 28px this used to be. Android asks for 48dp minimum and the
    old target was roughly 5mm square — small enough that missing it read as the
    control being broken rather than as a near miss. */
